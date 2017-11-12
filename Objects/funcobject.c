@@ -244,6 +244,9 @@ static PyMemberDef func_memberlist[] = {
 static PyObject *
 func_get_code(PyFunctionObject *op)
 {
+    if (PySys_Audit("object.__getattr__", "Os", op, "__code__") < 0)
+        return NULL;
+
     Py_INCREF(op->func_code);
     return op->func_code;
 }
@@ -271,6 +274,10 @@ func_set_code(PyFunctionObject *op, PyObject *value)
                      nclosure, nfree);
         return -1;
     }
+
+    if (PySys_Audit("object.__setattr__", "OsO", op, "__code__", value) < 0)
+        return -1;
+
     Py_INCREF(value);
     Py_XSETREF(op->func_code, value);
     return 0;
@@ -323,6 +330,9 @@ func_set_qualname(PyFunctionObject *op, PyObject *value)
 static PyObject *
 func_get_defaults(PyFunctionObject *op)
 {
+    if (PySys_Audit("object.__getattr__", "Os", op, "__defaults__") < 0)
+        return NULL;
+
     if (op->func_defaults == NULL) {
         Py_RETURN_NONE;
     }
@@ -333,6 +343,9 @@ func_get_defaults(PyFunctionObject *op)
 static int
 func_set_defaults(PyFunctionObject *op, PyObject *value)
 {
+    if (PySys_Audit("object.__setattr__", "OsO", op, "__defaults__", value) < 0)
+        return -1;
+
     /* Legal to del f.func_defaults.
      * Can only set func_defaults to NULL or a tuple. */
     if (value == Py_None)
@@ -350,6 +363,9 @@ func_set_defaults(PyFunctionObject *op, PyObject *value)
 static PyObject *
 func_get_kwdefaults(PyFunctionObject *op)
 {
+    if (PySys_Audit("object.__getattr__", "Os", op, "__kwdefaults__") < 0)
+        return NULL;
+
     if (op->func_kwdefaults == NULL) {
         Py_RETURN_NONE;
     }
@@ -360,6 +376,9 @@ func_get_kwdefaults(PyFunctionObject *op)
 static int
 func_set_kwdefaults(PyFunctionObject *op, PyObject *value)
 {
+    if (PySys_Audit("object.__setattr__", "OsO", op, "__kwdefaults__", value) < 0)
+        return -1;
+
     if (value == Py_None)
         value = NULL;
     /* Legal to del f.func_kwdefaults.
@@ -501,6 +520,9 @@ func_new_impl(PyTypeObject *type, PyCodeObject *code, PyObject *globals,
             }
         }
     }
+
+    if (PySys_Audit("function.__new__", "O", code) < 0)
+        return NULL;
 
     newfunc = (PyFunctionObject *)PyFunction_New((PyObject *)code,
                                                  globals);

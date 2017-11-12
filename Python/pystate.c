@@ -38,7 +38,14 @@ extern "C" {
 void
 _PyRuntimeState_Init(_PyRuntimeState *runtime)
 {
+    /* We preserve the hook across init, because there is
+       currently no public API to set it between runtime
+       initialization and interpreter initialization. */
+    void *open_for_import_hook = runtime->open_for_import_hook;
+
     memset(runtime, 0, sizeof(*runtime));
+
+    runtime->open_for_import_hook = open_for_import_hook;
 
     _PyObject_Initialize(&runtime->obj);
     _PyMem_Initialize(&runtime->mem);
@@ -703,6 +710,9 @@ _PyThread_CurrentFrames(void)
 {
     PyObject *result;
     PyInterpreterState *i;
+
+    if (PySys_Audit("sys._current_frames", NULL) < 0)
+        return NULL;
 
     result = PyDict_New();
     if (result == NULL)

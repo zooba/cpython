@@ -9,6 +9,7 @@
     <IncludeTests Condition="'$(IncludeTest)' == ''">true</IncludeTests>
     <IncludeSSL Condition="'$(IncludeSSL)' == ''">true</IncludeSSL>
     <IncludeTkinter Condition="'$(IncludeTkinter)' == ''">true</IncludeTkinter>
+    <IncludeSPython Condition="'$(IncludeSPython)' == ''">true</IncludeSPython>
   </PropertyGroup>
 
   <ItemDefinitionGroup>
@@ -70,6 +71,7 @@
     <Projects2 Include="_freeze_importlib.vcxproj" />
     <!-- python[w].exe -->
     <Projects2 Include="python.vcxproj;pythonw.vcxproj" />
+    <Projects2 Include="spython.vcxproj" Condition="$(IncludeSPython)" />
   </ItemGroup>
 
   <Target Name="Build">

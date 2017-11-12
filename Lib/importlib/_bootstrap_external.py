@@ -831,9 +831,12 @@ class FileLoader:
 
     def get_data(self, path):
         """Return the data from path as raw bytes."""
-        with _io.FileIO(path, 'r') as file:
-            return file.read()
-
+        if isinstance(self, (SourceLoader, ExtensionFileLoader)):
+            with _imp.open_for_import(str(path)) as file:
+                return file.read()
+        else:
+            with open(path, 'rb') as file:
+                return file.read()
 
 class SourceFileLoader(FileLoader, SourceLoader):
 

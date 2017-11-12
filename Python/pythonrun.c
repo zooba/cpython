@@ -906,8 +906,9 @@ PyRun_StringFlags(const char *str, int start, PyObject *globals,
         return NULL;
 
     mod = PyParser_ASTFromStringObject(str, filename, start, flags, arena);
-    if (mod != NULL)
+    if (mod != NULL) {
         ret = run_mod(mod, filename, globals, locals, flags, arena);
+    }
     PyArena_Free(arena);
     return ret;
 }
@@ -936,6 +937,7 @@ PyRun_FileExFlags(FILE *fp, const char *filename_str, int start, PyObject *globa
     if (mod == NULL) {
         goto exit;
     }
+
     ret = run_mod(mod, filename, globals, locals, flags, arena);
 
 exit:
@@ -983,6 +985,12 @@ run_mod(mod_ty mod, PyObject *filename, PyObject *globals, PyObject *locals,
     co = PyAST_CompileObject(mod, filename, flags, -1, arena);
     if (co == NULL)
         return NULL;
+
+    if (PySys_Audit("exec", "O", co) < 0) {
+        Py_DECREF(co);
+        return NULL;
+    }
+
     v = PyEval_EvalCode((PyObject*)co, globals, locals);
     Py_DECREF(co);
     return v;

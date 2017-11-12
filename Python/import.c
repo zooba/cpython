@@ -449,8 +449,8 @@ PyImport_Cleanup(void)
     /* Remove all modules from sys.modules, hoping that garbage collection
        can reclaim most of them. */
     if (PyDict_CheckExact(modules)) {
-        pos = 0;
-        while (PyDict_Next(modules, &pos, &key, &value)) {
+    pos = 0;
+    while (PyDict_Next(modules, &pos, &key, &value)) {
             CLEAR_MODULE(key, value);
         }
     }
@@ -476,7 +476,7 @@ PyImport_Cleanup(void)
 
     /* Clear the modules dict. */
     if (PyDict_CheckExact(modules)) {
-        PyDict_Clear(modules);
+    PyDict_Clear(modules);
     }
     else {
         _Py_IDENTIFIER(clear);
@@ -1676,6 +1676,15 @@ PyImport_ImportModuleLevelObject(PyObject *name, PyObject *globals,
 
         Py_XDECREF(mod);
 
+        PyObject *sys_path = PySys_GetObject("path");
+        PyObject *sys_meta_path = PySys_GetObject("meta_path");
+        PyObject *sys_path_hooks = PySys_GetObject("path_hooks");
+        if (PySys_Audit("import", "OOOOO",
+            abs_name, Py_None, sys_path ? sys_path : Py_None,
+            sys_meta_path ? sys_meta_path : Py_None,
+            sys_path_hooks ? sys_path_hooks : Py_None) < 0)
+            return NULL;
+
         /* XOptions is initialized after first some imports.
          * So we can't have negative cache.
          * Anyway, importlib.__find_and_load is much slower than
@@ -2169,6 +2178,73 @@ _imp_exec_builtin_impl(PyObject *module, PyObject *mod)
     return exec_builtin_or_dynamic(mod);
 }
 
+typedef PyObject *(*open_for_import_func)(PyObject *);
+
+int
+PyImport_SetOpenForImportHook(void *hook) {
+    if (Py_IsInitialized() && PySys_Audit("setopenforimporthook", NULL) < 0)
+        return -1;
+
+    if (_PyRuntime.open_for_import_hook) {
+        if (Py_IsInitialized()) {
+            PyErr_SetString(PyExc_SystemError,
+                "failed to change existing open_for_import hook");
+        }
+        return -1;
+    }
+
+    _PyRuntime.open_for_import_hook = hook;
+    return 0;
+}
+
+PyObject *
+PyImport_OpenForImport(const char *utf8path)
+{
+    PyObject *iomod, *f = NULL;
+
+    open_for_import_func hook = (open_for_import_func)_PyRuntime.open_for_import_hook;
+    if (hook) {
+        PyObject *path = PyUnicode_FromString(utf8path);
+        if (path) {
+            f = hook(path);
+            Py_DECREF(path);
+        }
+        return f;
+    }
+
+    iomod = PyImport_ImportModule("_io");
+    if (iomod) {
+        f = PyObject_CallMethod(iomod, "open", "ss", utf8path, "rb");
+        Py_DECREF(iomod);
+    }
+
+    return f;
+}
+
+/*[clinic input]
+_imp.open_for_import
+
+    path : unicode
+
+Opens the provided file with the intent to import the contents.
+
+This may perform extra validation beyond open(), but is otherwise interchangeable
+with calling open(path, 'rb').
+
+[clinic start generated code]*/
+
+static PyObject *
+_imp_open_for_import_impl(PyObject *module, PyObject *path)
+/*[clinic end generated code: output=aaee58710ada0bc9 input=2a49d8009c852e4d]*/
+{
+    open_for_import_func hook = (open_for_import_func)_PyRuntime.open_for_import_hook;
+    if (hook) {
+        return hook(path);
+    }
+
+    return PyImport_OpenForImport(PyUnicode_AsUTF8(path));
+}
+
 
 PyDoc_STRVAR(doc_imp,
 "(Extremely) low-level import machinery bits as used by importlib and imp.");
@@ -2188,6 +2264,7 @@ static PyMethodDef imp_methods[] = {
     _IMP_EXEC_DYNAMIC_METHODDEF
     _IMP_EXEC_BUILTIN_METHODDEF
     _IMP__FIX_CO_FILENAME_METHODDEF
+    _IMP_OPEN_FOR_IMPORT_METHODDEF
     {NULL, NULL}  /* sentinel */
 };
 

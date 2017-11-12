@@ -2787,6 +2787,10 @@ sock_bind(PySocketSockObject *s, PyObject *addro)
 
     if (!getsockaddrarg(s, addro, SAS2SA(&addrbuf), &addrlen))
         return NULL;
+
+    if (PySys_Audit("socket.address", "(O)", addro) < 0)
+        return NULL;
+
     Py_BEGIN_ALLOW_THREADS
     res = bind(s->sock_fd, SAS2SA(&addrbuf), addrlen);
     Py_END_ALLOW_THREADS
@@ -2952,6 +2956,9 @@ sock_connect(PySocketSockObject *s, PyObject *addro)
     if (!getsockaddrarg(s, addro, SAS2SA(&addrbuf), &addrlen))
         return NULL;
 
+    if (PySys_Audit("socket.address", "(O)", addro) < 0)
+        return NULL;
+
     res = internal_connect(s, SAS2SA(&addrbuf), addrlen, 1);
     if (res < 0)
         return NULL;
@@ -2976,6 +2983,9 @@ sock_connect_ex(PySocketSockObject *s, PyObject *addro)
     int res;
 
     if (!getsockaddrarg(s, addro, SAS2SA(&addrbuf), &addrlen))
+        return NULL;
+
+    if (PySys_Audit("socket.address", "(O)", addro) < 0)
         return NULL;
 
     res = internal_connect(s, SAS2SA(&addrbuf), addrlen, 0);
@@ -3980,6 +3990,9 @@ sock_sendto(PySocketSockObject *s, PyObject *args)
         return NULL;
     }
 
+    if (PySys_Audit("socket.address", "(O)", addro) < 0)
+        return NULL;
+
     ctx.buf = pbuf.buf;
     ctx.len = pbuf.len;
     ctx.flags = flags;
@@ -4108,6 +4121,10 @@ sock_sendmsg(PySocketSockObject *s, PyObject *args)
     if (addr_arg != NULL && addr_arg != Py_None) {
         if (!getsockaddrarg(s, addr_arg, SAS2SA(&addrbuf), &addrlen))
             goto finally;
+
+        if (PySys_Audit("socket.address", "(O)", addr_arg) < 0)
+            goto finally;
+
         msg.msg_name = &addrbuf;
         msg.msg_namelen = addrlen;
     }
@@ -4757,6 +4774,16 @@ sock_initobj(PyObject *self, PyObject *args, PyObject *kwds)
                                      &family, &type, &proto, &fdobj))
         return -1;
 
+#ifdef MS_WINDOWS
+    /* In this case, we don't use the family, type and proto args */
+    if (fdobj != NULL && fdobj != Py_None)
+#endif
+    {
+        if (PySys_Audit("socket()", "iii", family, type, proto) < 0)
+            return -1;
+    }
+
+
     if (fdobj != NULL && fdobj != Py_None) {
 #ifdef MS_WINDOWS
         /* recreate a socket that was duplicated */
@@ -4769,6 +4796,12 @@ sock_initobj(PyObject *self, PyObject *args, PyObject *kwds)
                 return -1;
             }
             memcpy(&info, PyBytes_AS_STRING(fdobj), sizeof(info));
+
+            if (PySys_Audit("socket()", "iii", info.iAddressFamily,
+                info.iSocketType, info.iProtocol) < 0) {
+                return -1;
+            }
+
             Py_BEGIN_ALLOW_THREADS
             fd = WSASocketW(FROM_PROTOCOL_INFO, FROM_PROTOCOL_INFO,
                      FROM_PROTOCOL_INFO, &info, 0, WSA_FLAG_OVERLAPPED);
@@ -4935,6 +4968,9 @@ static PyTypeObject sock_type = {
 static PyObject *
 socket_gethostname(PyObject *self, PyObject *unused)
 {
+    if (PySys_Audit("socket.gethostname", NULL) < 0)
+        return NULL;
+
 #ifdef MS_WINDOWS
     /* Don't use winsock's gethostname, as this returns the ANSI
        version of the hostname, whereas we need a Unicode string.
@@ -4973,7 +5009,6 @@ socket_gethostname(PyObject *self, PyObject *unused)
     return result;
 #else
     char buf[1024];
-    int res;
     Py_BEGIN_ALLOW_THREADS
     res = gethostname(buf, (int) sizeof buf - 1);
     Py_END_ALLOW_THREADS
@@ -5013,6 +5048,10 @@ extern int sethostname(const char *, size_t);
             return NULL;
         flag = 1;
     }
+
+    if (PySys_Audit("socket.sethostname", "(O)", hnobj) < 0)
+        return NULL;
+
     res = PyObject_GetBuffer(hnobj, &buf, PyBUF_SIMPLE);
     if (!res) {
         res = sethostname(buf.buf, buf.len);
@@ -5038,6 +5077,8 @@ socket_gethostbyname(PyObject *self, PyObject *args)
 
     if (!PyArg_ParseTuple(args, "et:gethostbyname", "idna", &name))
         return NULL;
+    if (PySys_Audit("socket.gethostbyname", "O", args) < 0)
+        goto finally;
     if (setipaddr(name, SAS2SA(&addrbuf),  sizeof(addrbuf), AF_INET) < 0)
         goto finally;
     ret = makeipaddr(SAS2SA(&addrbuf), sizeof(struct sockaddr_in));
@@ -5223,6 +5264,8 @@ socket_gethostbyname_ex(PyObject *self, PyObject *args)
 
     if (!PyArg_ParseTuple(args, "et:gethostbyname_ex", "idna", &name))
         return NULL;
+    if (PySys_Audit("socket.gethostbyname", "O", args) < 0)
+        goto finally;
     if (setipaddr(name, SAS2SA(&addr), sizeof(addr), AF_INET) < 0)
         goto finally;
     Py_BEGIN_ALLOW_THREADS
@@ -5301,6 +5344,8 @@ socket_gethostbyaddr(PyObject *self, PyObject *args)
 
     if (!PyArg_ParseTuple(args, "et:gethostbyaddr", "idna", &ip_num))
         return NULL;
+    if (PySys_Audit("socket.gethostbyaddr", "O", args) < 0)
+        goto finally;
     af = AF_UNSPEC;
     if (setipaddr(ip_num, sa, sizeof(addr), af) < 0)
         goto finally;
@@ -5372,6 +5417,10 @@ socket_getservbyname(PyObject *self, PyObject *args)
     struct servent *sp;
     if (!PyArg_ParseTuple(args, "s|s:getservbyname", &name, &proto))
         return NULL;
+
+    if (PySys_Audit("socket.getservbyname", "ss", name, proto) < 0)
+        return NULL;
+
     Py_BEGIN_ALLOW_THREADS
     sp = getservbyname(name, proto);
     Py_END_ALLOW_THREADS
@@ -5409,6 +5458,10 @@ socket_getservbyport(PyObject *self, PyObject *args)
             "getservbyport: port must be 0-65535.");
         return NULL;
     }
+
+    if (PySys_Audit("socket.getservbyport", "is", port, proto) < 0)
+        return NULL;
+
     Py_BEGIN_ALLOW_THREADS
     sp = getservbyport(htons((short)port), proto);
     Py_END_ALLOW_THREADS
@@ -6021,6 +6074,11 @@ socket_getaddrinfo(PyObject *self, PyObject *args, PyObject* kwargs)
         pptr = "00";
     }
 #endif
+
+    if (PySys_Audit("socket.address", "OOiii",
+        hobj, pobj, family, socktype, protocol) < 0)
+        return NULL;
+
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = family;
     hints.ai_socktype = socktype;
@@ -6105,6 +6163,10 @@ socket_getnameinfo(PyObject *self, PyObject *args)
     {
         return NULL;
     }
+
+    if (PySys_Audit("socket.address", "(O)", sa) < 0)
+        return NULL;
+
     if (flowinfo > 0xfffff) {
         PyErr_SetString(PyExc_OverflowError,
                         "getnameinfo(): flowinfo must be 0-1048575.");

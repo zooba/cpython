@@ -906,6 +906,9 @@ builtin_eval_impl(PyObject *module, PyObject *source, PyObject *globals,
     }
 
     if (PyCode_Check(source)) {
+        if (PySys_Audit("exec", "O", source) < 0)
+            return NULL;
+
         if (PyCode_GetNumFree((PyCodeObject *)source) > 0) {
             PyErr_SetString(PyExc_TypeError,
         "code object passed to eval() may not contain free variables");
@@ -986,6 +989,9 @@ builtin_exec_impl(PyObject *module, PyObject *source, PyObject *globals,
     }
 
     if (PyCode_Check(source)) {
+        if (PySys_Audit("exec", "O", source) < 0)
+            return NULL;
+
         if (PyCode_GetNumFree((PyCodeObject *)source) > 0) {
             PyErr_SetString(PyExc_TypeError,
                 "code object passed to exec() may not "
@@ -1130,7 +1136,14 @@ static PyObject *
 builtin_id(PyModuleDef *self, PyObject *v)
 /*[clinic end generated code: output=0aa640785f697f65 input=5a534136419631f4]*/
 {
-    return PyLong_FromVoidPtr(v);
+    PyObject *id = PyLong_FromVoidPtr(v);
+
+    if (id && PySys_Audit("id", "O", id) < 0) {
+        Py_DECREF(id);
+        return NULL;
+    }
+
+    return id;
 }
 
 

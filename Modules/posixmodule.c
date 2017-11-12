@@ -4194,6 +4194,10 @@ os_system_impl(PyObject *module, Py_UNICODE *command)
 /*[clinic end generated code: output=96c4dffee36dfb48 input=303f5ce97df606b0]*/
 {
     long result;
+
+    if (PySys_Audit("system", "(u)", command) < 0)
+        return -1;
+
     Py_BEGIN_ALLOW_THREADS
     _Py_BEGIN_SUPPRESS_IPH
     result = _wsystem(command);

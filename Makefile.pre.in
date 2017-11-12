@@ -228,6 +228,9 @@ LIBOBJS=	@LIBOBJS@
 PYTHON=		python$(EXE)
 BUILDPYTHON=	python$(BUILDEXE)
 
+SPYTHON=	spython$(EXE)
+BUILDSPYTHON=	spython$(BUILDEXE)
+
 PYTHON_FOR_REGEN=@PYTHON_FOR_REGEN@
 UPDATE_FILE=@PYTHON_FOR_REGEN@ $(srcdir)/Tools/scripts/update_file.py
 PYTHON_FOR_BUILD=@PYTHON_FOR_BUILD@
@@ -440,7 +443,7 @@ DTRACE_DEPS = \
 
 # Default target
 all:		@DEF_MAKE_ALL_RULE@
-build_all:	$(BUILDPYTHON) oldsharedmods sharedmods gdbhooks Programs/_testembed python-config
+build_all:	$(BUILDPYTHON) $(BUILDSPYTHON) oldsharedmods sharedmods gdbhooks Programs/_testembed python-config
 
 # Compile a binary with profile guided optimization.
 profile-opt:
@@ -551,6 +554,10 @@ pybuilddir.txt: $(BUILDPYTHON)
 		rm -f ./pybuilddir.txt ; \
 		exit 1 ; \
 	fi
+
+# Build the spython entry point
+$(BUILDSPYTHON):	Programs/spython.o $(LIBRARY) $(LDLIBRARY) $(PY3LIBRARY)
+	$(LINKCC) $(PY_LDFLAGS) $(LINKFORSHARED) -o $@ Programs/spython.o $(BLDLIBRARY) $(LIBS) $(MODLIBS) $(SYSLIBS) $(LDLAST)
 
 # This is shared by the math and cmath modules
 Modules/_math.o: Modules/_math.c Modules/_math.h
@@ -724,6 +731,9 @@ Modules/getpath.o: $(srcdir)/Modules/getpath.c Makefile
 
 Programs/python.o: $(srcdir)/Programs/python.c
 	$(MAINCC) -c $(PY_CORE_CFLAGS) -o $@ $(srcdir)/Programs/python.c
+
+Programs/spython.o: $(srcdir)/Programs/spython.c
+	$(MAINCC) -c $(PY_CORE_CFLAGS) -o $@ $(srcdir)/Programs/spython.c
 
 Programs/_testembed.o: $(srcdir)/Programs/_testembed.c
 	$(MAINCC) -c $(PY_CORE_CFLAGS) -o $@ $(srcdir)/Programs/_testembed.c

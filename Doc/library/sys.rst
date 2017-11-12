@@ -19,6 +19,21 @@ always available.
    .. versionadded:: 3.2
 
 
+.. function:: addaudithook(hook)
+
+   Adds the callable *hook* to the collection of active auditing hooks.
+   
+   When an auditing event is raised through the :func:`sys.audit` function, each
+   hook will be called in the order it was added with the event name and the
+   tuple of arguments.
+
+   Calling this function will trigger an event for all existing hooks, and if
+   any raise an exception derived from :class:`Exception`, the add will be
+   silently ignored. As a result, callers cannot assume that their hook has been
+   added unless they control all existing hooks.
+
+   .. versionadded:: 3.7
+
 .. data:: argv
 
    The list of command line arguments passed to a Python script. ``argv[0]`` is the
@@ -30,6 +45,24 @@ always available.
    To loop over the standard input, or the list of files given on the
    command line, see the :mod:`fileinput` module.
 
+.. function:: audit(event, *args)
+
+   ..index:: single: auditing
+
+   Raises an auditing event with any active hooks. The event name is a string
+   identifying the event and its associated schema, which is the number and
+   types of arguments. The schema for a given event is considered public and
+   stable API and should not be modified between releases.
+
+   This function will raise the first exception raised by any hook. In general,
+   these errors should not be handled and should terminate the process as
+   quickly as possible.
+
+   Hooks are added using the :func:`sys.addaudithook` function. The native
+   equivalent of this function is :c:func:`PySys_Audit`, and is preferred over
+   the Python function where possible.
+
+   .. versionadded:: 3.7
 
 .. data:: base_exec_prefix
 

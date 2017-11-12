@@ -74,6 +74,26 @@ Operating System Utilities
       This function is superseded by :c:func:`PyOS_AfterFork_Child()`.
 
 
+.. c:function:: int PyOS_SetOpenForExecHandler(void *handler)
+
+   Overrides the normal behavior of :func:`os.open_for_exec` to pass its
+   parameter through the provided handler.
+   
+   The handler is a function of type :c:type:`PyObject *(\*)(const char *narrow,
+   const wchar_t *wide)`. When called, one of the two arguments will contain the
+   filename to open while the other will contain ``NULL``, depending on the
+   current platform. It should always return a :term:`file object` or ``NULL``
+   with an exception set.
+
+   Once a hook has been set, it cannot be removed or replaced, and later calls to
+   :c:func:`PyOS_SetOpenForExecHook` will fail. On failure, the function returns
+   -1 and sets an exception if the interpreter has been initialized.
+
+   This function is safe to call before :c:func:`Py_Initialize`.
+
+   .. versionadded:: 3.7
+
+
 .. c:function:: int PyOS_CheckStack()
 
    Return true when the interpreter runs out of stack space.  This is a reliable
@@ -242,7 +262,43 @@ accessible to C code.  They all work with the current interpreter thread's
    .. versionadded:: 3.2
 
 
+.. c:function:: int PySys_Audit(const char *event, PyObject *arguments)
+
+   .. index:: single: audit events
+
+   Raises an auditing event with any active hooks. Returns zero for success
+   and non-zero with an exception set on failure.
+
+   :func:`sys.audit` performs the same function from Python code.
+
+   .. versionadded:: 3.7
+
+
+.. c:function:: int PySys_AddAuditHook(void *hook)
+
+   .. index:: single: audit events
+
+   Adds to the collection of active auditing hooks. Returns zero for success
+   and non-zero on failure. If the interpreter has been initialized, also sets an
+   error on failure.
+
+   This function is safe to call before :c:func:`Py_Initialize`. When called
+   after interpreter initialization, existing audit hooks are notified and may
+   silently abort the operation by raising an error subclassed from
+   :class:`Exception` (other errors will not be silenced).
+
+   The hook function is of type :c:type:`int (*)(const char *event, PyObject
+   *args)`, where ``args`` is guaranteed to be a :c:type:`PyTupleObject*`.
+
+   See :pep:`551` for a detailed decription of auditing, including a list of
+   events within the Python runtime and standard library that raise auditing
+   events.
+
+   .. versionadded:: 3.7
+
+
 .. _processcontrol:
+
 
 Process Control
 ===============

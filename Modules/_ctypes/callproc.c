@@ -1251,6 +1251,9 @@ static PyObject *load_library(PyObject *self, PyObject *args)
     if (!name)
         return NULL;
 
+    if (PySys_Audit("ctypes.dlopen", "O", nameobj) < 0)
+        return NULL;
+
     hMod = LoadLibraryW(name);
     if (!hMod)
         return PyErr_SetFromWindowsErr(GetLastError());
@@ -1333,6 +1336,10 @@ static PyObject *py_dl_open(PyObject *self, PyObject *args)
         name_str = NULL;
         name2 = NULL;
     }
+
+    if (PySys_Audit("ctypes.dlopen", "s", name_str) < 0)
+        return NULL;
+
     handle = ctypes_dlopen(name_str, mode);
     Py_XDECREF(name2);
     if (!handle) {

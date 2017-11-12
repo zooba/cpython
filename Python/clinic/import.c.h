@@ -354,6 +354,39 @@ exit:
     return return_value;
 }
 
+PyDoc_STRVAR(_imp_open_for_import__doc__,
+"open_for_import($module, /, path)\n"
+"--\n"
+"\n"
+"Opens the provided file with the intent to import the contents.\n"
+"\n"
+"This may perform extra validation beyond open(), but is otherwise interchangeable\n"
+"with calling open(path, \'rb\').");
+
+#define _IMP_OPEN_FOR_IMPORT_METHODDEF    \
+    {"open_for_import", (PyCFunction)_imp_open_for_import, METH_FASTCALL|METH_KEYWORDS, _imp_open_for_import__doc__},
+
+static PyObject *
+_imp_open_for_import_impl(PyObject *module, PyObject *path);
+
+static PyObject *
+_imp_open_for_import(PyObject *module, PyObject **args, Py_ssize_t nargs, PyObject *kwnames)
+{
+    PyObject *return_value = NULL;
+    static const char * const _keywords[] = {"path", NULL};
+    static _PyArg_Parser _parser = {"U:open_for_import", _keywords, 0};
+    PyObject *path;
+
+    if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
+        &path)) {
+        goto exit;
+    }
+    return_value = _imp_open_for_import_impl(module, path);
+
+exit:
+    return return_value;
+}
+
 #ifndef _IMP_CREATE_DYNAMIC_METHODDEF
     #define _IMP_CREATE_DYNAMIC_METHODDEF
 #endif /* !defined(_IMP_CREATE_DYNAMIC_METHODDEF) */
@@ -361,4 +394,4 @@ exit:
 #ifndef _IMP_EXEC_DYNAMIC_METHODDEF
     #define _IMP_EXEC_DYNAMIC_METHODDEF
 #endif /* !defined(_IMP_EXEC_DYNAMIC_METHODDEF) */
-/*[clinic end generated code: output=d068dd493e513604 input=a9049054013a1b77]*/
+/*[clinic end generated code: output=30eaeb6d1a82aadd input=a9049054013a1b77]*/

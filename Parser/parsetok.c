@@ -51,6 +51,11 @@ PyParser_ParseStringObject(const char *s, PyObject *filename,
     if (initerr(err_ret, filename) < 0)
         return NULL;
 
+    if (PySys_Audit("compile", "yO", s, filename) < 0) {
+        err_ret->error = E_ERROR;
+        return NULL;
+    }
+
     if (*flags & PyPARSE_IGNORE_COOKIE)
         tok = PyTokenizer_FromUTF8(s, exec_input);
     else
@@ -119,6 +124,9 @@ PyParser_ParseFileObject(FILE *fp, PyObject *filename,
                          perrdetail *err_ret, int *flags)
 {
     struct tok_state *tok;
+
+    if (PySys_Audit("compile", "OO", Py_None, filename) < 0)
+        return NULL;
 
     if (initerr(err_ret, filename) < 0)
         return NULL;

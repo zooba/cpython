@@ -385,6 +385,10 @@ check_set_special_type_attr(PyTypeObject *type, PyObject *value, const char *nam
                      "can't delete %s.%s", type->tp_name, name);
         return 0;
     }
+
+    if (PySys_Audit("object.__setattr__", "OsO", type, name, value) < 0)
+        return 0;
+
     return 1;
 }
 
@@ -676,6 +680,7 @@ type_set_bases(PyTypeObject *type, PyObject *new_bases, void *context)
                  type->tp_name);
         return -1;
     }
+
     for (i = 0; i < PyTuple_GET_SIZE(new_bases); i++) {
         PyObject *ob;
         PyTypeObject *base;
@@ -3873,6 +3878,12 @@ object_set_class(PyObject *self, PyObject *value, void *closure)
           Py_TYPE(value)->tp_name);
         return -1;
     }
+
+    if (value && PySys_Audit("object.__setattr__", "OsO", self, "__class__", value) < 0)
+        return -1;
+    if (!value && PySys_Audit("object.__delattr__", "Os", self, "__class__") < 0)
+        return -1;
+
     newto = (PyTypeObject *)value;
     /* In versions of CPython prior to 3.5, the code in
        compatible_for_assignment was not set up to correctly check for memory

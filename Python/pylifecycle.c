@@ -1008,6 +1008,14 @@ Py_FinalizeEx(void)
         /* nothing */;
 #endif
 
+    /* Clear all loghooks */
+    /* We want minimal exposure of this function, so define the extern
+     * here. The linker should discover the correct function without
+     * exporting a symbol. */
+    extern void _PySys_ClearAuditHooks(void);
+    _PySys_ClearAuditHooks();
+
+
 #ifdef Py_REF_DEBUG
     PyObject *showrefcount = _PyDebug_XOptionShowRefCount();
 #endif

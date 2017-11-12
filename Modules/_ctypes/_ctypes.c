@@ -2826,6 +2826,9 @@ PyCData_AtAddress(PyObject *type, void *buf)
     CDataObject *pd;
     StgDictObject *dict;
 
+    if (PySys_Audit("ctypes.cdata", "n", (Py_ssize_t)buf) < 0)
+        return NULL;
+
     assert(PyType_Check(type));
     dict = PyType_stgdict(type);
     if (!dict) {
@@ -3344,6 +3347,12 @@ PyCFuncPtr_FromDll(PyTypeObject *type, PyObject *args, PyObject *kwds)
                           _get_name, &name, &dll))
     {
         Py_DECREF(ftuple);
+        return NULL;
+    }
+
+    if (PySys_Audit("ctypes.dlsym",
+        ((uintptr_t)name & ~0xFFFF) ? "Os" : "On",
+        dll, name) < 0) {
         return NULL;
     }
 

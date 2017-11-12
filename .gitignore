@@ -93,6 +93,7 @@ python.bat
 python.exe
 python-gdb.py
 python.exe-gdb.py
+spython.bat
 reflog.txt
 .svn/
 tags

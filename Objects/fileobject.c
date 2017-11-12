@@ -32,7 +32,7 @@ PyFile_FromFd(int fd, const char *name, const char *mode, int buffering, const c
     PyObject *io, *stream;
     _Py_IDENTIFIER(open);
 
-    io = PyImport_ImportModule("io");
+    io = PyImport_ImportModule("_io");
     if (io == NULL)
         return NULL;
     stream = _PyObject_CallMethodId(io, &PyId_open, "isisssi", fd, mode,

@@ -71,6 +71,8 @@ typedef struct pyruntimestate {
     struct _ceval_runtime_state ceval;
     struct _gilstate_runtime_state gilstate;
 
+    void *open_for_import_hook;
+
     // XXX Consolidate globals found via the check-c-globals script.
 } _PyRuntimeState;
 
