@@ -392,7 +392,7 @@ spython_open_for_import(PyObject *path)
     PyObject *stream = NULL;
 
     const char *ext = strrchr(PyUnicode_AsUTF8(path), '.');
-    int disallow = !ext || strcmpi(ext, ".py") != 0;
+    int disallow = !ext || PyOS_stricmp(ext, ".py") != 0;
 
     PyObject *b = PyBool_FromLong(!disallow);
     if (PySys_Audit("spython.open_for_import", "OO", path, b) < 0) {
