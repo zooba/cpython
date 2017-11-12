@@ -5009,6 +5009,7 @@ socket_gethostname(PyObject *self, PyObject *unused)
     return result;
 #else
     char buf[1024];
+    int res;
     Py_BEGIN_ALLOW_THREADS
     res = gethostname(buf, (int) sizeof buf - 1);
     Py_END_ALLOW_THREADS
