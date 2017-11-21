@@ -27,6 +27,7 @@
 #define HOOK_DELATTR
 #define HOOK_PICKLE_FIND_CLASS
 #define HOOK_SYSTEM
+#define HOOK_URLLIB
 
 #ifdef HOOK_CLEARAUDITHOOKS
 static int
@@ -309,6 +310,26 @@ hook_system(const char *event, PyObject *args, FILE *audit_log)
 }
 #endif
 
+#ifdef HOOK_URLLIB
+static int
+hook_urllib_request(const char *event, PyObject *args, FILE *audit_log)
+{
+    PyObject *url, *data, *headers, *method;
+    if (!PyArg_ParseTuple(args, "OOOO", &url, &data, &headers, &method))
+        return -1;
+
+    PyObject *msg = PyUnicode_FromFormat("%S %S, %R, %R",
+        method, url, data, headers);
+    if (!msg)
+        return -1;
+
+    fprintf(audit_log, "%s: %s\n", event, PyUnicode_AsUTF8(msg));
+    Py_DECREF(msg);
+
+    return 0;
+}
+#endif
+
 static int
 default_spython_hook(const char *event, PyObject *args, void *userData)
 {
@@ -372,6 +393,11 @@ default_spython_hook(const char *event, PyObject *args, void *userData)
 #ifdef HOOK_SYSTEM
     if (strcmp(event, "system") == 0)
         return hook_system(event, args, (FILE*)userData);
+#endif
+
+#ifdef HOOK_URLLIB
+    if (strcmp(event, "urllib.Request") == 0)
+        return hook_urllib_request(event, args, (FILE*)userData);
 #endif
 
     // Unknown events just get printed
