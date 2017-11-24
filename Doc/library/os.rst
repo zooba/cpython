@@ -658,7 +658,7 @@ process and user.
 File Object Creation
 --------------------
 
-Thes functions create new :term:`file objects <file object>`.  (See also
+These functions create new :term:`file objects <file object>`.  (See also
 :func:`~os.open` for opening file descriptors.)
 
 
