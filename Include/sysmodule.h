@@ -42,6 +42,11 @@ PyAPI_FUNC(int) PySys_Audit(const char*, const char *, ...);
 PyAPI_FUNC(int) PySys_AddAuditHook(void*, void*);
 #endif
 
+#ifdef Py_BUILD_CORE
+PyAPI_FUNC(int) _PySys_AddXOptionWithError(const wchar_t *s);
+PyAPI_FUNC(int) _PySys_AddWarnOptionWithError(PyObject *option);
+#endif
+
 #ifdef __cplusplus
 }
 #endif
