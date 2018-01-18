@@ -82,7 +82,7 @@ _imp__fix_co_filename_impl(PyObject *module, PyCodeObject *code,
                            PyObject *path);
 
 static PyObject *
-_imp__fix_co_filename(PyObject *module, PyObject **args, Py_ssize_t nargs)
+_imp__fix_co_filename(PyObject *module, PyObject *const *args, Py_ssize_t nargs)
 {
     PyObject *return_value = NULL;
     PyCodeObject *code;
@@ -275,7 +275,7 @@ static PyObject *
 _imp_create_dynamic_impl(PyObject *module, PyObject *spec, PyObject *file);
 
 static PyObject *
-_imp_create_dynamic(PyObject *module, PyObject **args, Py_ssize_t nargs)
+_imp_create_dynamic(PyObject *module, PyObject *const *args, Py_ssize_t nargs)
 {
     PyObject *return_value = NULL;
     PyObject *spec;
@@ -354,6 +354,41 @@ exit:
     return return_value;
 }
 
+PyDoc_STRVAR(_imp_source_hash__doc__,
+"source_hash($module, /, key, source)\n"
+"--\n"
+"\n");
+
+#define _IMP_SOURCE_HASH_METHODDEF    \
+    {"source_hash", (PyCFunction)_imp_source_hash, METH_FASTCALL|METH_KEYWORDS, _imp_source_hash__doc__},
+
+static PyObject *
+_imp_source_hash_impl(PyObject *module, long key, Py_buffer *source);
+
+static PyObject *
+_imp_source_hash(PyObject *module, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)
+{
+    PyObject *return_value = NULL;
+    static const char * const _keywords[] = {"key", "source", NULL};
+    static _PyArg_Parser _parser = {"ly*:source_hash", _keywords, 0};
+    long key;
+    Py_buffer source = {NULL, NULL};
+
+    if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
+        &key, &source)) {
+        goto exit;
+    }
+    return_value = _imp_source_hash_impl(module, key, &source);
+
+exit:
+    /* Cleanup for source */
+    if (source.obj) {
+       PyBuffer_Release(&source);
+    }
+
+    return return_value;
+}
+
 PyDoc_STRVAR(_imp_open_for_import__doc__,
 "open_for_import($module, /, path)\n"
 "--\n"
@@ -370,7 +405,7 @@ static PyObject *
 _imp_open_for_import_impl(PyObject *module, PyObject *path);
 
 static PyObject *
-_imp_open_for_import(PyObject *module, PyObject **args, Py_ssize_t nargs, PyObject *kwnames)
+_imp_open_for_import(PyObject *module, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)
 {
     PyObject *return_value = NULL;
     static const char * const _keywords[] = {"path", NULL};
@@ -394,4 +429,4 @@ exit:
 #ifndef _IMP_EXEC_DYNAMIC_METHODDEF
     #define _IMP_EXEC_DYNAMIC_METHODDEF
 #endif /* !defined(_IMP_EXEC_DYNAMIC_METHODDEF) */
-/*[clinic end generated code: output=30eaeb6d1a82aadd input=a9049054013a1b77]*/
+/*[clinic end generated code: output=3eb77a6550432aca input=a9049054013a1b77]*/
