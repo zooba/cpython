@@ -1,4 +1,3 @@
-
 /* Module definition and import implementation */
 
 #include "Python.h"
@@ -2331,7 +2330,7 @@ static struct PyModuleDef impmodule = {
 const char *_Py_CheckHashBasedPycsMode = "default";
 
 PyMODINIT_FUNC
-PyInit_imp(void)
+PyInit__imp(void)
 {
     PyObject *m, *d;
 
