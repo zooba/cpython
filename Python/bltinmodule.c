@@ -990,8 +990,9 @@ builtin_eval_impl(PyObject *module, PyObject *source, PyObject *globals,
     }
 
     if (PyCode_Check(source)) {
-        if (PySys_Audit("exec", "O", source) < 0)
+        if (PySys_Audit("exec", "O", source) < 0) {
             return NULL;
+        }
 
         if (PyCode_GetNumFree((PyCodeObject *)source) > 0) {
             PyErr_SetString(PyExc_TypeError,
@@ -1073,8 +1074,9 @@ builtin_exec_impl(PyObject *module, PyObject *source, PyObject *globals,
     }
 
     if (PyCode_Check(source)) {
-        if (PySys_Audit("exec", "O", source) < 0)
+        if (PySys_Audit("exec", "O", source) < 0) {
             return NULL;
+        }
 
         if (PyCode_GetNumFree((PyCodeObject *)source) > 0) {
             PyErr_SetString(PyExc_TypeError,

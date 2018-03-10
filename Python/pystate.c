@@ -791,8 +791,9 @@ _PyThread_CurrentFrames(void)
     PyObject *result;
     PyInterpreterState *i;
 
-    if (PySys_Audit("sys._current_frames", NULL) < 0)
+    if (PySys_Audit("sys._current_frames", NULL) < 0) {
         return NULL;
+    }
 
     result = PyDict_New();
     if (result == NULL)

@@ -4173,8 +4173,9 @@ os_system_impl(PyObject *module, Py_UNICODE *command)
 {
     long result;
 
-    if (PySys_Audit("system", "(u)", command) < 0)
+    if (PySys_Audit("system", "(u)", command) < 0) {
         return -1;
+    }
 
     Py_BEGIN_ALLOW_THREADS
     _Py_BEGIN_SUPPRESS_IPH
@@ -4198,6 +4199,11 @@ os_system_impl(PyObject *module, PyObject *command)
 {
     long result;
     const char *bytes = PyBytes_AsString(command);
+
+    if (PySys_Audit("system", "(O)", command) < 0) {
+        return -1;
+    }
+
     Py_BEGIN_ALLOW_THREADS
     result = system(bytes);
     Py_END_ALLOW_THREADS

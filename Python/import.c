@@ -1612,10 +1612,11 @@ import_find_and_load(PyObject *abs_name)
     PyObject *sys_meta_path = PySys_GetObject("meta_path");
     PyObject *sys_path_hooks = PySys_GetObject("path_hooks");
     if (PySys_Audit("import", "OOOOO",
-        abs_name, Py_None, sys_path ? sys_path : Py_None,
-        sys_meta_path ? sys_meta_path : Py_None,
-        sys_path_hooks ? sys_path_hooks : Py_None) < 0)
+                    abs_name, Py_None, sys_path ? sys_path : Py_None,
+                    sys_meta_path ? sys_meta_path : Py_None,
+                    sys_path_hooks ? sys_path_hooks : Py_None) < 0) {
         return NULL;
+    }
 
 
     /* XOptions is initialized after first some imports.
@@ -2227,8 +2228,10 @@ typedef PyObject *(*open_for_import_func)(PyObject *);
 
 int
 PyImport_SetOpenForImportHook(void *hook) {
-    if (Py_IsInitialized() && PySys_Audit("setopenforimporthook", NULL) < 0)
+    if (Py_IsInitialized() &&
+        PySys_Audit("setopenforimporthook", NULL) < 0) {
         return -1;
+    }
 
     if (_PyRuntime.open_for_import_hook) {
         if (Py_IsInitialized()) {

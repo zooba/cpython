@@ -1497,8 +1497,9 @@ sys_getframe(PyObject *self, PyObject *args)
     }
     Py_INCREF(f);
 
-    if (PySys_Audit("sys._getframe", "(O)", f) < 0)
+    if (PySys_Audit("sys._getframe", "(O)", f) < 0) {
         return NULL;
+    }
 
     return (PyObject*)f;
 }

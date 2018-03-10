@@ -28,14 +28,17 @@
 #define HOOK_PICKLE_FIND_CLASS
 #define HOOK_SYSTEM
 #define HOOK_URLLIB
+#define HOOK_ARRAY
+#define HOOK_MMAP
 
 #ifdef HOOK_CLEARAUDITHOOKS
 static int
 hook_clearaudithooks(const char *event, PyObject *args, FILE *audit_log)
 {
     fprintf(audit_log, "%s: closing log\n", event);
-    if (audit_log != stderr)
+    if (audit_log != stderr) {
         fclose(audit_log);
+    }
     audit_log = NULL;
     return 0;
 }
@@ -59,9 +62,11 @@ hook_open_for_import(const char *event, PyObject *args, FILE *audit_log)
     PyObject *path = PyTuple_GetItem(args, 0);
     PyObject *disallow = PyTuple_GetItem(args, 1);
 
-    PyObject *msg = PyUnicode_FromFormat("'%S'; allowed = %S", path, disallow);
-    if (!msg)
+    PyObject *msg = PyUnicode_FromFormat("'%S'; allowed = %S",
+                                         path, disallow);
+    if (!msg) {
         return -1;
+    }
 
     fprintf(audit_log, "%s: %s\n", event, PyUnicode_AsUTF8(msg));
     Py_DECREF(msg);
@@ -75,24 +80,27 @@ static int
 hook_import(const char *event, PyObject *args, FILE *audit_log)
 {
     PyObject *module, *filename, *sysPath, *sysMetaPath, *sysPathHooks;
-    if (!PyArg_ParseTuple(args, "OOOOO",
-        &module, &filename, &sysPath, &sysMetaPath, &sysPathHooks))
+    if (!PyArg_ParseTuple(args, "OOOOO", &module, &filename, &sysPath,
+                          &sysMetaPath, &sysPathHooks)) {
         return -1;
+    }
 
     PyObject *msg;
     if (PyObject_IsTrue(filename)) {
         msg = PyUnicode_FromFormat("importing %S from %S",
-            module, filename);
+                                   module, filename);
     } else {
         msg = PyUnicode_FromFormat("importing %S:\n"
-            "    sys.path=%S\n"
-            "    sys.meta_path=%S\n"
-            "    sys.path_hooks=%S",
-            module, sysPath, sysMetaPath, sysPathHooks);
+                                   "    sys.path=%S\n"
+                                   "    sys.meta_path=%S\n"
+                                   "    sys.path_hooks=%S",
+                                   module, sysPath, sysMetaPath,
+                                   sysPathHooks);
     }
 
-    if (!msg)
+    if (!msg) {
         return -1;
+    }
 
     fprintf(audit_log, "%s: %s\n", event, PyUnicode_AsUTF8(msg));
     Py_DECREF(msg);
@@ -107,39 +115,46 @@ hook_compile(const char *event, PyObject *args, FILE *audit_log)
 {
     PyObject *code, *filename, *_;
     if (!PyArg_ParseTuple(args, "OO", &code, &filename,
-        &_, &_, &_, &_, &_, &_))
+                          &_, &_, &_, &_, &_, &_)) {
         return -1;
+    }
 
     if (!PyUnicode_Check(code)) {
         code = PyObject_Repr(code);
-        if (!code)
+        if (!code) {
             return -1;
+        }
     } else {
         Py_INCREF(code);
     }
 
     if (PyUnicode_GetLength(code) > 200) {
         Py_SETREF(code, PyUnicode_Substring(code, 0, 200));
-        if (!code)
+        if (!code) {
             return -1;
+        }
         Py_SETREF(code, PyUnicode_FromFormat("%S...", code));
-        if (!code)
+        if (!code) {
             return -1;
+        }
     }
 
     PyObject *msg;
     if (PyObject_IsTrue(filename)) {
         if (code == Py_None) {
-            msg = PyUnicode_FromFormat("compiling from file %S", filename);
+            msg = PyUnicode_FromFormat("compiling from file %S",
+                                       filename);
         } else {
-            msg = PyUnicode_FromFormat("compiling %S: %S", filename, code);
+            msg = PyUnicode_FromFormat("compiling %S: %S",
+                                       filename, code);
         }
     } else {
         msg = PyUnicode_FromFormat("compiling: %R", code);
     }
     Py_DECREF(code);
-    if (!msg)
+    if (!msg) {
         return -1;
+    }
 
     fprintf(audit_log, "%s: %s\n", event, PyUnicode_AsUTF8(msg));
     Py_DECREF(msg);
@@ -154,12 +169,15 @@ hook_code_new(const char *event, PyObject *args, FILE *audit_log)
     PyObject *code, *filename, *name;
     int argcount, kwonlyargcount, nlocals, stacksize, flags;
     if (!PyArg_ParseTuple(args, "OOOiiiii", &code, &filename, &name,
-        &argcount, &kwonlyargcount, &nlocals, &stacksize, &flags))
+                          &argcount, &kwonlyargcount, &nlocals,
+                          &stacksize, &flags)) {
         return -1;
+    }
 
     PyObject *msg = PyUnicode_FromFormat("compiling: %R", filename);
-    if (!msg)
+    if (!msg) {
         return -1;
+    }
 
     fprintf(audit_log, "%s: %s\n", event, PyUnicode_AsUTF8(msg));
     Py_DECREF(msg);
@@ -173,15 +191,17 @@ hook_code_new(const char *event, PyObject *args, FILE *audit_log)
     // going to overflow nlocals.
     char *wcode;
     Py_ssize_t wlen;
-    if (PyBytes_AsStringAndSize(code, &wcode, &wlen) < 0)
+    if (PyBytes_AsStringAndSize(code, &wcode, &wlen) < 0) {
         return -1;
+    }
 
     for (Py_ssize_t i = 0; i < wlen; i += 2) {
         if (wcode[i] == STORE_FAST) {
             if (wcode[i + 1] > nlocals) {
                 PyErr_SetString(PyExc_ValueError, "invalid code object");
-                fprintf(audit_log, "%s: code stores to local %d but only allocates %d\n", event,
-                    wcode[i + 1], nlocals);
+                fprintf(audit_log, "%s: code stores to local %d "
+                        "but only allocates %d\n",
+                        event, wcode[i + 1], nlocals);
                 return -1;
             }
         }
@@ -196,12 +216,14 @@ static int
 hook_exec(const char *event, PyObject *args, FILE *audit_log)
 {
     PyObject *codeObj;
-    if (!PyArg_ParseTuple(args, "O", &codeObj))
+    if (!PyArg_ParseTuple(args, "O", &codeObj)) {
         return -1;
+    }
 
     PyObject *msg = PyUnicode_FromFormat("%R", codeObj);
-    if (!msg)
+    if (!msg) {
         return -1;
+    }
 
     fprintf(audit_log, "%s: %s\n", event, PyUnicode_AsUTF8(msg));
     Py_DECREF(msg);
@@ -216,8 +238,9 @@ hook_id(const char *event, PyObject *args, FILE *audit_log)
     PyObject *id = PyTuple_GetItem(args, 0);
 
     PyObject *msg = _PyLong_Format(id, 16);
-    if (!msg)
+    if (!msg) {
         return -1;
+    }
 
     fprintf(audit_log, "%s: %s\n", event, PyUnicode_AsUTF8(msg));
     Py_DECREF(msg);
@@ -230,17 +253,21 @@ static int
 hook_setattr(const char *event, PyObject *args, FILE *audit_log)
 {
     PyObject *obj, *attr, *value;
-    if (!PyArg_ParseTuple(args, "OOO", &obj, &attr, &value))
+    if (!PyArg_ParseTuple(args, "OOO", &obj, &attr, &value)) {
         return -1;
+    }
 
     /* Cannot render message during initialization */
-    if (!Py_IsInitialized())
+    if (!Py_IsInitialized()) {
         return 0;
+    }
 
-    PyObject *msg = PyUnicode_FromFormat("setattr(%R, \"%S\", %R instance at %p)",
+    PyObject *msg = PyUnicode_FromFormat(
+        "setattr(%R, \"%S\", %R instance at %p)",
         obj, attr, Py_TYPE(value), value);
-    if (!msg)
+    if (!msg) {
         return -1;
+    }
 
     fprintf(audit_log, "%s: %s\n", event, PyUnicode_AsUTF8(msg));
     Py_DECREF(msg);
@@ -253,16 +280,20 @@ static int
 hook_delattr(const char *event, PyObject *args, FILE *audit_log)
 {
     PyObject *obj, *attr;
-    if (!PyArg_ParseTuple(args, "OO", &obj, &attr))
+    if (!PyArg_ParseTuple(args, "OO", &obj, &attr)) {
         return -1;
+    }
 
     /* Cannot render message during initialization */
-    if (!Py_IsInitialized())
+    if (!Py_IsInitialized()) {
         return 0;
+    }
 
-    PyObject *msg = PyUnicode_FromFormat("delattr(%R, \"%S\")", obj, attr);
-    if (!msg)
+    PyObject *msg = PyUnicode_FromFormat("delattr(%R, \"%S\")",
+                                         obj, attr);
+    if (!msg) {
         return -1;
+    }
 
     fprintf(audit_log, "%s: %s\n", event, PyUnicode_AsUTF8(msg));
     Py_DECREF(msg);
@@ -279,13 +310,14 @@ hook_pickle_find_class(const char *event, PyObject *args, FILE *audit_log)
 
     PyObject *msg = PyUnicode_FromFormat("finding %R.%R blocked",
         mod, global);
-    if (!msg)
+    if (!msg) {
         return -1;
+    }
 
     fprintf(audit_log, "%s: %s\n", event, PyUnicode_AsUTF8(msg));
     Py_DECREF(msg);
     PyErr_SetString(PyExc_RuntimeError,
-        "unpickling arbitrary objects is disallowed");
+                    "unpickling arbitrary objects is disallowed");
     return -1;
 }
 #endif
@@ -297,16 +329,15 @@ hook_system(const char *event, PyObject *args, FILE *audit_log)
     PyObject *cmd = PyTuple_GetItem(args, 0);
 
     PyObject *msg = PyUnicode_FromFormat("%S", cmd);
-    if (!msg)
+    if (!msg) {
         return -1;
+    }
 
     fprintf(audit_log, "%s: %s\n", event, PyUnicode_AsUTF8(msg));
     Py_DECREF(msg);
 
     PyErr_SetString(PyExc_RuntimeError, "os.system() is disallowed");
     return -1;
-
-    //return 0;
 }
 #endif
 
@@ -315,13 +346,59 @@ static int
 hook_urllib_request(const char *event, PyObject *args, FILE *audit_log)
 {
     PyObject *url, *data, *headers, *method;
-    if (!PyArg_ParseTuple(args, "OOOO", &url, &data, &headers, &method))
+    if (!PyArg_ParseTuple(args, "OOOO", &url, &data, &headers, &method)) {
         return -1;
+    }
 
     PyObject *msg = PyUnicode_FromFormat("%S %S, %R, %R",
-        method, url, data, headers);
-    if (!msg)
+                                         method, url, data, headers);
+    if (!msg) {
         return -1;
+    }
+
+    fprintf(audit_log, "%s: %s\n", event, PyUnicode_AsUTF8(msg));
+    Py_DECREF(msg);
+
+    return 0;
+}
+#endif
+
+#ifdef HOOK_ARRAY
+static int
+hook_array_new(const char *event, PyObject *args, FILE *audit_log)
+{
+    PyObject *typecode, *initial;
+    if (!PyArg_ParseTuple(args, "OO", &typecode, &initial)) {
+        return -1;
+    }
+
+    PyObject *msg = PyUnicode_FromFormat("%R, %R", typecode, initial);
+    if (!msg) {
+        return -1;
+    }
+
+    fprintf(audit_log, "%s: %s\n", event, PyUnicode_AsUTF8(msg));
+    Py_DECREF(msg);
+
+    return 0;
+}
+#endif
+
+#ifdef HOOK_MMAP
+static int
+hook_mmap_new(const char *event, PyObject *args, FILE *audit_log)
+{
+    PyObject *fileno, *map_size, *access, *offset;
+    if (!PyArg_ParseTuple(args, "OOOO",
+                          &fileno, &map_size, &access, &offset)) {
+        return -1;
+    }
+
+    PyObject *msg = PyUnicode_FromFormat("(%R, %R, %R, %R)",
+                                    fileno, map_size, access, offset);
+    if (!msg) {
+        return -1;
+    }
 
     fprintf(audit_log, "%s: %s\n", event, PyUnicode_AsUTF8(msg));
     Py_DECREF(msg);
@@ -336,74 +413,100 @@ default_spython_hook(const char *event, PyObject *args, void *userData)
     assert(userData);
 
 #ifdef HOOK_CLEARAUDITHOOKS
-    if (strcmp(event, "sys._clearaudithooks") == 0)
+    if (strcmp(event, "sys._clearaudithooks") == 0) {
         return hook_clearaudithooks(event, args, (FILE*)userData);
+    }
 #endif
 
 #ifdef HOOK_ADDAUDITHOOK
-    if (strcmp(event, "sys.addaudithook") == 0)
+    if (strcmp(event, "sys.addaudithook") == 0) {
         return hook_addaudithook(event, args, (FILE*)userData);
+    }
 #endif
 
 #ifdef HOOK_OPEN_FOR_IMPORT
-    if (strcmp(event, "spython.open_for_import") == 0)
+    if (strcmp(event, "spython.open_for_import") == 0) {
         return hook_open_for_import(event, args, (FILE*)userData);
+    }
 #endif
 
 #ifdef HOOK_IMPORT
-    if (strcmp(event, "import") == 0)
+    if (strcmp(event, "import") == 0) {
         return hook_import(event, args, (FILE*)userData);
+    }
 #endif
 
 #ifdef HOOK_COMPILE
-    if (strcmp(event, "compile") == 0)
+    if (strcmp(event, "compile") == 0) {
         return hook_compile(event, args, (FILE*)userData);
+    }
 #endif
 
 #ifdef HOOK_CODE_NEW
-    if (strcmp(event, "code.__new__") == 0)
+    if (strcmp(event, "code.__new__") == 0) {
         return hook_code_new(event, args, (FILE*)userData);
+    }
 #endif
 
 #ifdef HOOK_EXEC
-    if (strcmp(event, "exec") == 0)
+    if (strcmp(event, "exec") == 0) {
         return hook_exec(event, args, (FILE*)userData);
+    }
 #endif
 
 #ifdef HOOK_ID
-    if (strcmp(event, "id") == 0)
+    if (strcmp(event, "id") == 0) {
         return hook_id(event, args, (FILE*)userData);
+    }
 #endif
 
 #ifdef HOOK_SETATTR
-    if (strcmp(event, "object.__setattr__") == 0)
+    if (strcmp(event, "object.__setattr__") == 0) {
         return hook_setattr(event, args, (FILE*)userData);
+    }
 #endif
 
 #ifdef HOOK_DELATTR
-    if (strcmp(event, "object.__delattr__") == 0)
+    if (strcmp(event, "object.__delattr__") == 0) {
         return hook_delattr(event, args, (FILE*)userData);
+    }
 #endif
 
 #ifdef HOOK_PICKLE_FIND_CLASS
-    if (strcmp(event, "pickle.find_class") == 0)
+    if (strcmp(event, "pickle.find_class") == 0) {
         return hook_pickle_find_class(event, args, (FILE*)userData);
+    }
 #endif
 
 #ifdef HOOK_SYSTEM
-    if (strcmp(event, "system") == 0)
+    if (strcmp(event, "system") == 0) {
         return hook_system(event, args, (FILE*)userData);
+    }
 #endif
 
 #ifdef HOOK_URLLIB
-    if (strcmp(event, "urllib.Request") == 0)
+    if (strcmp(event, "urllib.Request") == 0) {
         return hook_urllib_request(event, args, (FILE*)userData);
+    }
+#endif
+
+#ifdef HOOK_ARRAY
+    if (strcmp(event, "array.__new__") == 0) {
+        return hook_array_new(event, args, (FILE*)userData);
+    }
+#endif
+
+#ifdef HOOK_MMAP
+    if (strcmp(event, "mmap.__new__") == 0) {
+        return hook_mmap_new(event, args, (FILE*)userData);
+    }
 #endif
 
     // Unknown events just get printed
     PyObject *msg = PyObject_Repr(args);
-    if (!msg)
+    if (!msg) {
         return -1;
+    }
 
     fprintf((FILE*)userData, "%s: %s\n", event, PyUnicode_AsUTF8(msg));
     Py_DECREF(msg);
@@ -434,15 +537,17 @@ spython_open_for_import(PyObject *path)
 
     if (!io) {
         io = PyImport_ImportModule("_io");
-        if (!io)
+        if (!io) {
             return NULL;
+        }
     }
 
 #ifdef MS_WINDOWS
     /* On Windows, we explicitly open the file without sharing */
     wchar_t *wide = PyUnicode_AsWideCharString(path, NULL);
-    if (!wide)
+    if (!wide) {
         return NULL;
+    }
     SECURITY_ATTRIBUTES secAttrib = { 0 };
     HANDLE hFile = CreateFileW(wide, GENERIC_READ, 0, &secAttrib, OPEN_EXISTING, 0, NULL);
     int err = GetLastError();
@@ -461,12 +566,10 @@ spython_open_for_import(PyObject *path)
     }
 
     stream = PyObject_CallMethod(io, "open", "isisssi", fd, "rb",
-        -1, NULL, NULL,
-        NULL, 1);
+                                 -1, NULL, NULL, NULL, 1);
 #else
     stream = PyObject_CallMethod(io, "open", "Osisssi", path, "rb",
-        -1, NULL, NULL,
-        NULL, 1);
+                                 -1, NULL, NULL, NULL, 1);
 #endif
 
     return stream;
@@ -543,7 +646,8 @@ wmain(int argc, wchar_t **argv)
     wchar_t *log_path = NULL;
     size_t log_path_len;
 
-    if (_wgetenv_s(&log_path_len, NULL, 0, L"SPYTHONLOG") == 0 && log_path_len) {
+    if (_wgetenv_s(&log_path_len, NULL, 0, L"SPYTHONLOG") == 0 &&
+        log_path_len) {
         log_path_len += 1;
         log_path = (wchar_t*)malloc(log_path_len * sizeof(wchar_t));
         _wgetenv_s(&log_path_len, log_path, log_path_len, L"SPYTHONLOG");
@@ -555,8 +659,9 @@ wmain(int argc, wchar_t **argv)
     }
 
     if (_wfopen_s(&audit_log, log_path, L"w")) {
-        fwprintf_s(stderr, L"Fatal Python error: "
-            L"failed to open log file: %s\n", log_path);
+        fwprintf_s(stderr,
+                   L"Fatal Python error: failed to open log file: %s\n",
+                   log_path);
         return 1;
     }
     free(log_path);
