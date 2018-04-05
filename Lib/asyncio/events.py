@@ -24,7 +24,7 @@ from . import format_helpers
 class SendfileNotAvailableError(RuntimeError):
     """Sendfile syscall is not available.
 
-    Raised if OS does not support senfile syscall for given socket or
+    Raised if OS does not support sendfile syscall for given socket or
     file type.
     """
 
@@ -155,6 +155,14 @@ class TimerHandle(Handle):
         if not self._cancelled:
             self._loop._timer_handle_cancelled(self)
         super().cancel()
+
+    def when(self):
+        """Return a scheduled callback time.
+
+        The time is an absolute timestamp, using the same time
+        reference as loop.time().
+        """
+        return self._when
 
 
 class AbstractServer:
