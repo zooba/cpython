@@ -1,6 +1,8 @@
 This is Python version 3.8.0 alpha 0
 ====================================
 
+View builds on `python.visualstudio.com <https://python.visualstudio.com/cpython/_build>`_
+
 .. image:: https://travis-ci.org/python/cpython.svg?branch=master
    :alt: CPython build status on Travis CI
    :target: https://travis-ci.org/python/cpython
