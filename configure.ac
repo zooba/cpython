@@ -781,6 +781,26 @@ cat >> conftest.c <<EOF
         ia64-linux-gnu
 # elif defined(__m68k__) && !defined(__mcoldfire__)
         m68k-linux-gnu
+# elif defined(__mips_hard_float) && defined(__mips_isa_rev) && (__mips_isa_rev >=6) && defined(_MIPSEL)
+#  if _MIPS_SIM == _ABIO32
+        mipsisa32r6el-linux-gnu
+#  elif _MIPS_SIM == _ABIN32
+        mipsisa64r6el-linux-gnuabin32
+#  elif _MIPS_SIM == _ABI64
+        mipsisa64r6el-linux-gnuabi64
+#  else
+#   error unknown platform triplet
+#  endif
+# elif defined(__mips_hard_float) && defined(__mips_isa_rev) && (__mips_isa_rev >=6)
+#  if _MIPS_SIM == _ABIO32
+        mipsisa32r6-linux-gnu
+#  elif _MIPS_SIM == _ABIN32
+        mipsisa64r6-linux-gnuabin32
+#  elif _MIPS_SIM == _ABI64
+        mipsisa64r6-linux-gnuabi64
+#  else
+#   error unknown platform triplet
+#  endif
 # elif defined(__mips_hard_float) && defined(_MIPSEL)
 #  if _MIPS_SIM == _ABIO32
         mipsel-linux-gnu
@@ -823,6 +843,14 @@ cat >> conftest.c <<EOF
         sparc64-linux-gnu
 # elif defined(__sparc__)
         sparc-linux-gnu
+# elif defined(__riscv)
+#  if __riscv_xlen == 32
+        riscv32-linux-gnu
+#  elif __riscv_xlen == 64
+        riscv64-linux-gnu
+#  else
+#   error unknown platform triplet
+#  endif
 # else
 #   error unknown platform triplet
 # endif
@@ -1630,6 +1658,26 @@ yes)
     if test $ac_cv_disable_missing_field_initializers = yes
     then
       CFLAGS_NODIST="$CFLAGS_NODIST -Wno-missing-field-initializers"
+    fi
+
+    AC_MSG_CHECKING(if we can turn off $CC invalid function cast warning)
+     ac_save_cc="$CC"
+     CC="$CC -Wcast-function-type -Werror"
+     AC_CACHE_VAL(ac_cv_disable_cast_function_type,
+       AC_COMPILE_IFELSE(
+         [
+           AC_LANG_PROGRAM([[]], [[]])
+         ],[
+           ac_cv_disable_cast_function_type=yes
+         ],[
+           ac_cv_disable_cast_function_type=no
+         ]))
+     CC="$ac_save_cc"
+    AC_MSG_RESULT($ac_cv_disable_cast_function_type)
+
+    if test $ac_cv_disable_cast_function_type = yes
+    then
+      CFLAGS_NODIST="$CFLAGS_NODIST -Wno-cast-function-type"
     fi
 
     AC_MSG_CHECKING(if we can turn on $CC mixed sign comparison warning)
@@ -2710,6 +2758,21 @@ void *x = uuid_create
 #endif
 ]])],
   [AC_DEFINE(HAVE_UUID_CREATE, 1, Define if uuid_create() exists.)
+   AC_MSG_RESULT(yes)],
+  [AC_MSG_RESULT(no)]
+)
+
+# Little-endian FreeBSD, OpenBSD and NetBSD needs encoding into an octet
+# stream in big-endian byte-order
+AC_MSG_CHECKING(for uuid_enc_be)
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <uuid.h>]], [[
+#ifndef uuid_enc_be
+uuid_t uuid;
+unsigned char buf[sizeof(uuid)];
+uuid_enc_be(buf, &uuid);
+#endif
+]])],
+  [AC_DEFINE(HAVE_UUID_ENC_BE, 1, Define if uuid_enc_be() exists.)
    AC_MSG_RESULT(yes)],
   [AC_MSG_RESULT(no)]
 )
