@@ -18,6 +18,7 @@ import sys
 import types
 import warnings
 
+open_for_import = _imp.open_for_import
 
 def source_hash(source_bytes):
     "Return the hash of *source_bytes* as used in hash-based pyc files."
