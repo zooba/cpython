@@ -2239,10 +2239,10 @@ _imp_source_hash_impl(PyObject *module, long key, Py_buffer *source)
     return PyBytes_FromStringAndSize(hash.data, sizeof(hash.data));
 }
 
-typedef PyObject *(*open_for_import_func)(PyObject *);
+typedef PyObject *(*open_for_import_func)(PyObject *, void *);
 
 int
-PyImport_SetOpenForImportHook(void *hook) {
+PyImport_SetOpenForImportHook(void *hook, void *userData) {
     if (Py_IsInitialized() &&
         PySys_Audit("setopenforimporthook", NULL) < 0) {
         return -1;
@@ -2257,6 +2257,7 @@ PyImport_SetOpenForImportHook(void *hook) {
     }
 
     _PyRuntime.open_for_import_hook = hook;
+    _PyRuntime.open_for_import_userdata = userData;
     return 0;
 }
 
@@ -2269,7 +2270,7 @@ PyImport_OpenForImport(const char *utf8path)
     if (hook) {
         PyObject *path = PyUnicode_FromString(utf8path);
         if (path) {
-            f = hook(path);
+            f = hook(path, _PyRuntime.open_for_import_userdata);
             Py_DECREF(path);
         }
         return f;
@@ -2302,7 +2303,7 @@ _imp_open_for_import_impl(PyObject *module, PyObject *path)
 {
     open_for_import_func hook = (open_for_import_func)_PyRuntime.open_for_import_hook;
     if (hook) {
-        return hook(path);
+        return hook(path, _PyRuntime.open_for_import_userdata);
     }
 
     return PyImport_OpenForImport(PyUnicode_AsUTF8(path));

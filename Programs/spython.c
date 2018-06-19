@@ -9,12 +9,6 @@
 #include <fenv.h>
 #endif
 
-#ifdef MS_WINDOWS
-#include <Windows.h>
-#include <io.h>
-#include <fcntl.h>
-#endif
-
 #define HOOK_ADDAUDITHOOK
 #define HOOK_OPEN_FOR_IMPORT
 #define HOOK_IMPORT
@@ -357,10 +351,10 @@ default_spython_hook(const char *event, PyObject *args, void *userData)
 }
 
 static PyObject *
-spython_open_for_import(PyObject *path)
+spython_open_for_import(PyObject *path, void *userData)
 {
     static PyObject *io = NULL;
-    PyObject *stream = NULL;
+    PyObject *stream = NULL, *buffer = NULL, *err = NULL;
 
     const char *ext = strrchr(PyUnicode_AsUTF8(path), '.');
     int disallow = !ext || PyOS_stricmp(ext, ".py") != 0;
@@ -384,37 +378,28 @@ spython_open_for_import(PyObject *path)
         }
     }
 
-#ifdef MS_WINDOWS
-    /* On Windows, we explicitly open the file without sharing */
-    wchar_t *wide = PyUnicode_AsWideCharString(path, NULL);
-    if (!wide) {
-        return NULL;
-    }
-    SECURITY_ATTRIBUTES secAttrib = { 0 };
-    HANDLE hFile = CreateFileW(wide, GENERIC_READ, 0, &secAttrib, OPEN_EXISTING, 0, NULL);
-    int err = GetLastError();
-
-    PyMem_Free(wide);
-    if (hFile == INVALID_HANDLE_VALUE) {
-        PyErr_SetExcFromWindowsErr(PyExc_OSError, err);
-        return NULL;
-    }
-
-    int fd = _open_osfhandle((intptr_t)hFile, _O_RDONLY);
-    if (fd < 0) {
-        PyErr_SetFromErrno(PyExc_OSError);
-        CloseHandle(hFile);
-        return NULL;
-    }
-
-    stream = PyObject_CallMethod(io, "open", "isisssi", fd, "rb",
-                                 -1, NULL, NULL, NULL, 1);
-#else
     stream = PyObject_CallMethod(io, "open", "Osisssi", path, "rb",
                                  -1, NULL, NULL, NULL, 1);
-#endif
+    if (!stream) {
+        return NULL;
+    }
 
-    return stream;
+    buffer = PyObject_CallMethod(stream, "read", "(i)", -1);
+
+    if (!buffer) {
+        Py_DECREF(stream);
+        return NULL;
+    }
+
+    err = PyObject_CallMethod(stream, "close", NULL);
+    Py_DECREF(stream);
+    if (!err) {
+        return NULL;
+    }
+
+    // TODO: Validate buffer and raise an error if not permitted
+
+    return PyObject_CallMethod(io, "BytesIO", "N", buffer);
 }
 
 static int
@@ -448,7 +433,7 @@ spython_main(int argc, wchar_t **argv, FILE *audit_log)
 #endif
 
     PySys_AddAuditHook(default_spython_hook, audit_log);
-    PyImport_SetOpenForImportHook(spython_open_for_import);
+    PyImport_SetOpenForImportHook(spython_open_for_import, NULL);
 
     Py_IgnoreEnvironmentFlag = 1;
     Py_NoSiteFlag = 1;
