@@ -397,7 +397,9 @@ spython_open_for_import(PyObject *path, void *userData)
         return NULL;
     }
 
-    // TODO: Validate buffer and raise an error if not permitted
+    /* Here is a good place to validate the contents of
+     * buffer and raise an error if not permitted
+     */
 
     return PyObject_CallMethod(io, "BytesIO", "N", buffer);
 }
@@ -425,18 +427,16 @@ spython_main(int argc, wchar_t **argv, FILE *audit_log)
         return 1;
     }
 
-#ifdef Py_DEBUG
+    /* Run the interactive loop. This should be removed for production use */
     if (wcscmp(argv[1], L"-i") == 0) {
         fclose(audit_log);
         audit_log = stderr;
     }
-#endif
 
     PySys_AddAuditHook(default_spython_hook, audit_log);
     PyImport_SetOpenForImportHook(spython_open_for_import, NULL);
 
     Py_IgnoreEnvironmentFlag = 1;
-    Py_NoSiteFlag = 1;
     Py_NoUserSiteDirectory = 1;
     Py_DontWriteBytecodeFlag = 1;
 
@@ -444,13 +444,12 @@ spython_main(int argc, wchar_t **argv, FILE *audit_log)
     Py_Initialize();
     PySys_SetArgv(argc - 1, &argv[1]);
 
-#ifdef Py_DEBUG
+    /* Run the interactive loop. This should be removed for production use */
     if (wcscmp(argv[1], L"-i") == 0) {
         PyRun_InteractiveLoop(stdin, "<stdin>");
         Py_Finalize();
         return 0;
     }
-#endif
 
     FILE *fp = _Py_wfopen(argv[1], L"r");
     if (fp != NULL) {
