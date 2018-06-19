@@ -15,34 +15,15 @@
 #include <fcntl.h>
 #endif
 
-#define HOOK_CLEARAUDITHOOKS
 #define HOOK_ADDAUDITHOOK
 #define HOOK_OPEN_FOR_IMPORT
 #define HOOK_IMPORT
 #define HOOK_COMPILE
 #define HOOK_CODE_NEW
-#define HOOK_EXEC
-#define HOOK_ID
 #define HOOK_SETATTR
 #define HOOK_DELATTR
 #define HOOK_PICKLE_FIND_CLASS
 #define HOOK_SYSTEM
-#define HOOK_URLLIB
-#define HOOK_ARRAY
-#define HOOK_MMAP
-
-#ifdef HOOK_CLEARAUDITHOOKS
-static int
-hook_clearaudithooks(const char *event, PyObject *args, FILE *audit_log)
-{
-    fprintf(audit_log, "%s: closing log\n", event);
-    if (audit_log != stderr) {
-        fclose(audit_log);
-    }
-    audit_log = NULL;
-    return 0;
-}
-#endif
 
 #ifdef HOOK_ADDAUDITHOOK
 static int
@@ -211,43 +192,6 @@ hook_code_new(const char *event, PyObject *args, FILE *audit_log)
 }
 #endif
 
-#ifdef HOOK_EXEC
-static int
-hook_exec(const char *event, PyObject *args, FILE *audit_log)
-{
-    PyObject *codeObj;
-    if (!PyArg_ParseTuple(args, "O", &codeObj)) {
-        return -1;
-    }
-
-    PyObject *msg = PyUnicode_FromFormat("%R", codeObj);
-    if (!msg) {
-        return -1;
-    }
-
-    fprintf(audit_log, "%s: %s\n", event, PyUnicode_AsUTF8(msg));
-    Py_DECREF(msg);
-    return 0;
-}
-#endif
-
-#ifdef HOOK_ID
-static int
-hook_id(const char *event, PyObject *args, FILE *audit_log)
-{
-    PyObject *id = PyTuple_GetItem(args, 0);
-
-    PyObject *msg = _PyLong_Format(id, 16);
-    if (!msg) {
-        return -1;
-    }
-
-    fprintf(audit_log, "%s: %s\n", event, PyUnicode_AsUTF8(msg));
-    Py_DECREF(msg);
-    return 0;
-}
-#endif
-
 #ifdef HOOK_SETATTR
 static int
 hook_setattr(const char *event, PyObject *args, FILE *audit_log)
@@ -341,82 +285,10 @@ hook_system(const char *event, PyObject *args, FILE *audit_log)
 }
 #endif
 
-#ifdef HOOK_URLLIB
-static int
-hook_urllib_request(const char *event, PyObject *args, FILE *audit_log)
-{
-    PyObject *url, *data, *headers, *method;
-    if (!PyArg_ParseTuple(args, "OOOO", &url, &data, &headers, &method)) {
-        return -1;
-    }
-
-    PyObject *msg = PyUnicode_FromFormat("%S %S, %R, %R",
-                                         method, url, data, headers);
-    if (!msg) {
-        return -1;
-    }
-
-    fprintf(audit_log, "%s: %s\n", event, PyUnicode_AsUTF8(msg));
-    Py_DECREF(msg);
-
-    return 0;
-}
-#endif
-
-#ifdef HOOK_ARRAY
-static int
-hook_array_new(const char *event, PyObject *args, FILE *audit_log)
-{
-    PyObject *typecode, *initial;
-    if (!PyArg_ParseTuple(args, "OO", &typecode, &initial)) {
-        return -1;
-    }
-
-    PyObject *msg = PyUnicode_FromFormat("%R, %R", typecode, initial);
-    if (!msg) {
-        return -1;
-    }
-
-    fprintf(audit_log, "%s: %s\n", event, PyUnicode_AsUTF8(msg));
-    Py_DECREF(msg);
-
-    return 0;
-}
-#endif
-
-#ifdef HOOK_MMAP
-static int
-hook_mmap_new(const char *event, PyObject *args, FILE *audit_log)
-{
-    PyObject *fileno, *map_size, *access, *offset;
-    if (!PyArg_ParseTuple(args, "OOOO",
-                          &fileno, &map_size, &access, &offset)) {
-        return -1;
-    }
-
-    PyObject *msg = PyUnicode_FromFormat("(%R, %R, %R, %R)",
-                                    fileno, map_size, access, offset);
-    if (!msg) {
-        return -1;
-    }
-
-    fprintf(audit_log, "%s: %s\n", event, PyUnicode_AsUTF8(msg));
-    Py_DECREF(msg);
-
-    return 0;
-}
-#endif
-
 static int
 default_spython_hook(const char *event, PyObject *args, void *userData)
 {
     assert(userData);
-
-#ifdef HOOK_CLEARAUDITHOOKS
-    if (strcmp(event, "sys._clearaudithooks") == 0) {
-        return hook_clearaudithooks(event, args, (FILE*)userData);
-    }
-#endif
 
 #ifdef HOOK_ADDAUDITHOOK
     if (strcmp(event, "sys.addaudithook") == 0) {
@@ -448,18 +320,6 @@ default_spython_hook(const char *event, PyObject *args, void *userData)
     }
 #endif
 
-#ifdef HOOK_EXEC
-    if (strcmp(event, "exec") == 0) {
-        return hook_exec(event, args, (FILE*)userData);
-    }
-#endif
-
-#ifdef HOOK_ID
-    if (strcmp(event, "id") == 0) {
-        return hook_id(event, args, (FILE*)userData);
-    }
-#endif
-
 #ifdef HOOK_SETATTR
     if (strcmp(event, "object.__setattr__") == 0) {
         return hook_setattr(event, args, (FILE*)userData);
@@ -484,25 +344,7 @@ default_spython_hook(const char *event, PyObject *args, void *userData)
     }
 #endif
 
-#ifdef HOOK_URLLIB
-    if (strcmp(event, "urllib.Request") == 0) {
-        return hook_urllib_request(event, args, (FILE*)userData);
-    }
-#endif
-
-#ifdef HOOK_ARRAY
-    if (strcmp(event, "array.__new__") == 0) {
-        return hook_array_new(event, args, (FILE*)userData);
-    }
-#endif
-
-#ifdef HOOK_MMAP
-    if (strcmp(event, "mmap.__new__") == 0) {
-        return hook_mmap_new(event, args, (FILE*)userData);
-    }
-#endif
-
-    // Unknown events just get printed
+    // All other events just get printed
     PyObject *msg = PyObject_Repr(args);
     if (!msg) {
         return -1;
