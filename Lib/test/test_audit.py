@@ -157,35 +157,6 @@ class AuditTest(unittest.TestCase):
             (a, '__class__'),
         ], actual);
 
-    def test_spython(self):
-        spython_executable = os.path.join(os.path.dirname(sys.executable),
-            os.path.split(sys.executable)[1].replace("python", "spython"));
-        if not os.path.isfile(spython_executable):
-            self.skipTest("spython executable is not available at " + spython_executable)
-
-        with support.temp_dir() as temp_path:
-            spython_log = os.path.join(temp_path, "spython.log")
-            env = os.environ.copy()
-            env["SPYTHONLOG"] = spython_log
-
-            with subprocess.Popen([
-                spython_executable, os.path.abspath(__file__), "spython_test"
-            ], env=env, encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE) as p:
-                p.wait()
-                stdout, stderr = p.stdout.read(), p.stderr.read()
-
-            with open(spython_log, 'r', encoding='utf-8') as f:
-                # For this test, we don't care about the open_for_exec messages
-                spylog = [line.partition(':')[0].strip() for line in f
-                          if line and line.startswith(('sys.addaudithook:', 'sys._clearaudithooks:'))]
-
-            self.assertEqual("", stdout.strip(), "expected no stdout output")
-            self.assertEqual("", stderr.strip(), "expected no stderr output")
-            self.assertSequenceEqual(["sys.addaudithook",
-                                      "sys._clearaudithooks"],
-                                     spylog,
-                                     "mismatched log output")
-
 if __name__ == "__main__":
     if len(sys.argv) >= 2 and sys.argv[1] == "spython_test":
         # Doesn't matter what we add - it will be blocked
