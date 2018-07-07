@@ -43,7 +43,7 @@ expr_stmt: testlist_star_expr (annassign | augassign (yield_expr|testlist) |
 annassign: ':' test ['=' test]
 testlist_star_expr: (test|star_expr) (',' (test|star_expr))* [',']
 augassign: ('+=' | '-=' | '*=' | '@=' | '/=' | '%=' | '&=' | '|=' | '^=' |
-            '<<=' | '>>=' | '**=' | '//=')
+            '<<=' | '>>=' | '**=' | '//=' | '??=')
 # For normal and annotated assignments, additional restrictions enforced by the interpreter
 del_stmt: 'del' exprlist
 pass_stmt: 'pass'
@@ -100,7 +100,8 @@ xor_expr: and_expr ('^' and_expr)*
 and_expr: shift_expr ('&' shift_expr)*
 shift_expr: arith_expr (('<<'|'>>') arith_expr)*
 arith_expr: term (('+'|'-') term)*
-term: factor (('*'|'@'|'/'|'%'|'//') factor)*
+term: coalesce (('*'|'@'|'/'|'%'|'//') coalesce)*
+coalesce: factor ('??' factor)*
 factor: ('+'|'-'|'~') factor | power
 power: atom_expr ['**' factor]
 atom_expr: ['await'] atom trailer*
@@ -109,7 +110,11 @@ atom: ('(' [yield_expr|testlist_comp] ')' |
        '{' [dictorsetmaker] '}' |
        NAME | NUMBER | STRING+ | '...' | 'None' | 'True' | 'False')
 testlist_comp: (test|star_expr) ( comp_for | (',' (test|star_expr))* [','] )
-trailer: '(' [arglist] ')' | '[' subscriptlist ']' | '.' NAME
+trailer: ('(' [arglist] ')' |
+          '[' subscriptlist ']' |
+          '?[' subscriptlist ']' |
+          '.' NAME |
+          '?.' NAME)
 subscriptlist: subscript (',' subscript)* [',']
 subscript: test | [test] ':' [test] [sliceop]
 sliceop: ':' [test]

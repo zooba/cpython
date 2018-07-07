@@ -58,6 +58,7 @@ module Python
           -- BoolOp() can use left & right?
     expr = BoolOp(boolop op, expr* values)
          | BinOp(expr left, operator op, expr right)
+         | CoalesceOp(expr left, coalesceop op, expr right)
          | UnaryOp(unaryop op, expr operand)
          | Lambda(arguments args, expr body)
          | IfExp(expr test, expr body, expr orelse)
@@ -95,13 +96,15 @@ module Python
           -- col_offset is the byte offset in the utf8 string the parser uses
           attributes (int lineno, int col_offset)
 
-    expr_context = Load | Store | Del | AugLoad | AugStore | Param
+    expr_context = Load | Store | Del | AugLoad | AugStore | Param | LoadIfNotNone
 
     slice = Slice(expr? lower, expr? upper, expr? step)
           | ExtSlice(slice* dims)
           | Index(expr value)
 
     boolop = And | Or
+
+    coalesceop = Coalesce
 
     operator = Add | Sub | Mult | MatMult | Div | Mod | Pow | LShift
                  | RShift | BitOr | BitXor | BitAnd | FloorDiv

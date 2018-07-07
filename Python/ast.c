@@ -921,6 +921,8 @@ get_operator(const node *n)
             return FloorDiv;
         case PERCENT:
             return Mod;
+        case MAYBEMAYBE:
+            return Coalesce;
         default:
             return (operator_ty)0;
     }
@@ -2348,7 +2350,11 @@ ast_for_binop(struct compiling *c, const node *n)
 static expr_ty
 ast_for_trailer(struct compiling *c, const node *n, expr_ty left_expr)
 {
-    /* trailer: '(' [arglist] ')' | '[' subscriptlist ']' | '.' NAME
+    /* trailer: ('(' [arglist] ')' |
+                 '[' subscriptlist ']' |
+                 '?[' subscriptlist ']' |
+                 '.' NAME |
+                 '?.' NAME)
        subscriptlist: subscript (',' subscript)* [',']
        subscript: '.' '.' '.' | test | [test] ':' [test] [sliceop]
      */
@@ -2367,15 +2373,27 @@ ast_for_trailer(struct compiling *c, const node *n, expr_ty left_expr)
         return Attribute(left_expr, attr_id, Load,
                          LINENO(n), n->n_col_offset, c->c_arena);
     }
+    else if (TYPE(CHILD(n, 0)) == MAYBEDOT) {
+        PyObject *attr_id = NEW_IDENTIFIER(CHILD(n, 1));
+        if (!attr_id)
+            return NULL;
+        return Attribute(left_expr, attr_id, LoadIfNotNone,
+                         LINENO(n), n->n_col_offset, c->c_arena);
+    }
     else {
-        REQ(CHILD(n, 0), LSQB);
+        expr_context_ty ctx = Load;
+        if (TYPE(CHILD(n, 0)) == MAYBELSQB) {
+            ctx = LoadIfNotNone;
+        } else {
+            REQ(CHILD(n, 0), LSQB);
+        }
         REQ(CHILD(n, 2), RSQB);
         n = CHILD(n, 1);
         if (NCH(n) == 1) {
             slice_ty slc = ast_for_slice(c, CHILD(n, 0));
             if (!slc)
                 return NULL;
-            return Subscript(left_expr, slc, Load, LINENO(n), n->n_col_offset,
+            return Subscript(left_expr, slc, ctx, LINENO(n), n->n_col_offset,
                              c->c_arena);
         }
         else {
@@ -2544,7 +2562,8 @@ ast_for_expr(struct compiling *c, const node *n)
        and_expr: shift_expr ('&' shift_expr)*
        shift_expr: arith_expr (('<<'|'>>') arith_expr)*
        arith_expr: term (('+'|'-') term)*
-       term: factor (('*'|'@'|'/'|'%'|'//') factor)*
+       term: coalesce (('*'|'@'|'/'|'%'|'//') coalesce)*
+       coalesce: factor ('??' factor)*
        factor: ('+'|'-'|'~') factor | power
        power: atom_expr ['**' factor]
        atom_expr: ['await'] atom trailer*
@@ -2566,24 +2585,33 @@ ast_for_expr(struct compiling *c, const node *n)
             /* Fallthrough */
         case or_test:
         case and_test:
+        case coalesce:
             if (NCH(n) == 1) {
                 n = CHILD(n, 0);
                 goto loop;
             }
-            seq = _Py_asdl_seq_new((NCH(n) + 1) / 2, c->c_arena);
-            if (!seq)
-                return NULL;
-            for (i = 0; i < NCH(n); i += 2) {
-                expr_ty e = ast_for_expr(c, CHILD(n, i));
-                if (!e)
+            else {
+                boolop_ty op;
+                seq = _Py_asdl_seq_new((NCH(n) + 1) / 2, c->c_arena);
+                if (!seq)
                     return NULL;
-                asdl_seq_SET(seq, i / 2, e);
+                for (i = 0; i < NCH(n); i += 2) {
+                    expr_ty e = ast_for_expr(c, CHILD(n, i));
+                    if (!e)
+                        return NULL;
+                    asdl_seq_SET(seq, i / 2, e);
+                }
+                if (!strcmp(STR(CHILD(n, 1)), "and")) {
+                    op = And;
+                } else if (!strcmp(STR(CHILD(n, 1)), "??")) {
+                    op = Coalesce;
+                } else {
+                    assert(!strcmp(STR(CHILD(n, 1)), "or"));
+                    op = Or;
+                }
+                return BoolOp(op, seq, LINENO(n), n->n_col_offset, c->c_arena);
             }
-            if (!strcmp(STR(CHILD(n, 1)), "and"))
-                return BoolOp(And, seq, LINENO(n), n->n_col_offset,
-                              c->c_arena);
-            assert(!strcmp(STR(CHILD(n, 1)), "or"));
-            return BoolOp(Or, seq, LINENO(n), n->n_col_offset, c->c_arena);
+            break;
         case not_test:
             if (NCH(n) == 1) {
                 n = CHILD(n, 0);

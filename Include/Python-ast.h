@@ -9,11 +9,13 @@ typedef struct _stmt *stmt_ty;
 typedef struct _expr *expr_ty;
 
 typedef enum _expr_context { Load=1, Store=2, Del=3, AugLoad=4, AugStore=5,
-                             Param=6 } expr_context_ty;
+                             Param=6, LoadIfNotNone=7 } expr_context_ty;
 
 typedef struct _slice *slice_ty;
 
 typedef enum _boolop { And=1, Or=2 } boolop_ty;
+
+typedef enum _coalesceop { Coalesce=1 } coalesceop_ty;
 
 typedef enum _operator { Add=1, Sub=2, Mult=3, MatMult=4, Div=5, Mod=6, Pow=7,
                          LShift=8, RShift=9, BitOr=10, BitXor=11, BitAnd=12,
@@ -212,7 +214,8 @@ enum _expr_kind {BoolOp_kind=1, BinOp_kind=2, UnaryOp_kind=3, Lambda_kind=4,
                   FormattedValue_kind=19, JoinedStr_kind=20, Bytes_kind=21,
                   NameConstant_kind=22, Ellipsis_kind=23, Constant_kind=24,
                   Attribute_kind=25, Subscript_kind=26, Starred_kind=27,
-                  Name_kind=28, List_kind=29, Tuple_kind=30};
+                  Name_kind=28, List_kind=29, Tuple_kind=30,
+                  CoalesceOp_kind=31};
 struct _expr {
     enum _expr_kind kind;
     union {
@@ -358,6 +361,12 @@ struct _expr {
             asdl_seq *elts;
             expr_context_ty ctx;
         } Tuple;
+
+        struct {
+            expr_ty left;
+            coalesceop_ty op;
+            expr_ty right;
+        } CoalesceOp;
 
     } v;
     int lineno;

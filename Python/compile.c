@@ -1022,6 +1022,8 @@ stack_effect(int opcode, int oparg, int jump)
 
         case JUMP_IF_TRUE_OR_POP:
         case JUMP_IF_FALSE_OR_POP:
+        case JUMP_IF_NONE_OR_POP:
+        case JUMP_IF_NOT_NONE_OR_POP:
             return jump ? 0 : -1;
 
         case POP_JUMP_IF_FALSE:
@@ -2243,6 +2245,11 @@ compiler_jump_if(struct compiler *c, expr_ty e, basicblock *next, int cond)
             return 0;
         if (next2 != next)
             compiler_use_next_block(c, next2);
+        return 1;
+    }
+    case CoalesceOp_kind: {
+        VISIT(c, expr, e);
+        ADDOP_JABS(c, JUMP_IF_NOT_NONE_OR_POP, next);
         return 1;
     }
     case IfExp_kind: {
@@ -4542,6 +4549,9 @@ compiler_visit_expr(struct compiler *c, expr_ty e)
         case Load:
             ADDOP_NAME(c, LOAD_ATTR, e->v.Attribute.attr, names);
             break;
+        case LoadIfNotNone:
+            ADDOP_NAME(c, LOAD_ATTR, e->v.Attribute.attr, names);
+            break;
         case AugStore:
             ADDOP(c, ROT_TWO);
             /* Fall through */
@@ -4835,6 +4845,7 @@ compiler_handle_subscr(struct compiler *c, const char *kind,
     /* XXX this code is duplicated */
     switch (ctx) {
         case AugLoad: /* fall through to Load */
+        case LoadIfNotNone: /* fall through to Load */
         case Load:    op = BINARY_SUBSCR; break;
         case AugStore:/* fall through to Store */
         case Store:   op = STORE_SUBSCR; break;
