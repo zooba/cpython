@@ -101,9 +101,9 @@ and_expr: shift_expr ('&' shift_expr)*
 shift_expr: arith_expr (('<<'|'>>') arith_expr)*
 arith_expr: term (('+'|'-') term)*
 term: coalesce (('*'|'@'|'/'|'%'|'//') coalesce)*
-coalesce: factor ('??' factor)*
+coalesce: factor ['??' coalesce]
 factor: ('+'|'-'|'~') factor | power
-power: atom_expr ['**' factor]
+power: coalesce ['**' factor]
 atom_expr: ['await'] atom trailer*
 atom: ('(' [yield_expr|testlist_comp] ')' |
        '[' [testlist_comp] ']' |
