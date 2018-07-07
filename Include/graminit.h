@@ -65,9 +65,9 @@
 #define shift_expr 318
 #define arith_expr 319
 #define term 320
-#define coalesce 321
-#define factor 322
-#define power 323
+#define factor 321
+#define power 322
+#define coalesce 323
 #define atom_expr 324
 #define atom 325
 #define testlist_comp 326
