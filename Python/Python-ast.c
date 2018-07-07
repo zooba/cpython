@@ -205,6 +205,12 @@ static char *BinOp_fields[]={
     "op",
     "right",
 };
+static PyTypeObject *CoalesceOp_type;
+static char *CoalesceOp_fields[]={
+    "left",
+    "op",
+    "right",
+};
 static PyTypeObject *UnaryOp_type;
 _Py_IDENTIFIER(operand);
 static char *UnaryOp_fields[]={
@@ -357,7 +363,8 @@ static char *Tuple_fields[]={
 };
 static PyTypeObject *expr_context_type;
 static PyObject *Load_singleton, *Store_singleton, *Del_singleton,
-*AugLoad_singleton, *AugStore_singleton, *Param_singleton;
+*AugLoad_singleton, *AugStore_singleton, *Param_singleton,
+*LoadIfNotNone_singleton;
 static PyObject* ast2obj_expr_context(expr_context_ty);
 static PyTypeObject *Load_type;
 static PyTypeObject *Store_type;
@@ -365,6 +372,7 @@ static PyTypeObject *Del_type;
 static PyTypeObject *AugLoad_type;
 static PyTypeObject *AugStore_type;
 static PyTypeObject *Param_type;
+static PyTypeObject *LoadIfNotNone_type;
 static PyTypeObject *slice_type;
 static PyObject* ast2obj_slice(void*);
 static PyTypeObject *Slice_type;
@@ -390,6 +398,10 @@ static PyObject *And_singleton, *Or_singleton;
 static PyObject* ast2obj_boolop(boolop_ty);
 static PyTypeObject *And_type;
 static PyTypeObject *Or_type;
+static PyTypeObject *coalesceop_type;
+static PyObject *Coalesce_singleton;
+static PyObject* ast2obj_coalesceop(coalesceop_ty);
+static PyTypeObject *Coalesce_type;
 static PyTypeObject *operator_type;
 static PyObject *Add_singleton, *Sub_singleton, *Mult_singleton,
 *MatMult_singleton, *Div_singleton, *Mod_singleton, *Pow_singleton,
@@ -914,6 +926,8 @@ static int init_types(void)
     if (!BoolOp_type) return 0;
     BinOp_type = make_type("BinOp", expr_type, BinOp_fields, 3);
     if (!BinOp_type) return 0;
+    CoalesceOp_type = make_type("CoalesceOp", expr_type, CoalesceOp_fields, 3);
+    if (!CoalesceOp_type) return 0;
     UnaryOp_type = make_type("UnaryOp", expr_type, UnaryOp_fields, 2);
     if (!UnaryOp_type) return 0;
     Lambda_type = make_type("Lambda", expr_type, Lambda_fields, 2);
@@ -1000,6 +1014,10 @@ static int init_types(void)
     if (!Param_type) return 0;
     Param_singleton = PyType_GenericNew(Param_type, NULL, NULL);
     if (!Param_singleton) return 0;
+    LoadIfNotNone_type = make_type("LoadIfNotNone", expr_context_type, NULL, 0);
+    if (!LoadIfNotNone_type) return 0;
+    LoadIfNotNone_singleton = PyType_GenericNew(LoadIfNotNone_type, NULL, NULL);
+    if (!LoadIfNotNone_singleton) return 0;
     slice_type = make_type("slice", &AST_type, NULL, 0);
     if (!slice_type) return 0;
     if (!add_attributes(slice_type, NULL, 0)) return 0;
@@ -1020,6 +1038,13 @@ static int init_types(void)
     if (!Or_type) return 0;
     Or_singleton = PyType_GenericNew(Or_type, NULL, NULL);
     if (!Or_singleton) return 0;
+    coalesceop_type = make_type("coalesceop", &AST_type, NULL, 0);
+    if (!coalesceop_type) return 0;
+    if (!add_attributes(coalesceop_type, NULL, 0)) return 0;
+    Coalesce_type = make_type("Coalesce", coalesceop_type, NULL, 0);
+    if (!Coalesce_type) return 0;
+    Coalesce_singleton = PyType_GenericNew(Coalesce_type, NULL, NULL);
+    if (!Coalesce_singleton) return 0;
     operator_type = make_type("operator", &AST_type, NULL, 0);
     if (!operator_type) return 0;
     if (!add_attributes(operator_type, NULL, 0)) return 0;
@@ -1174,6 +1199,8 @@ static int obj2ast_expr_context(PyObject* obj, expr_context_ty* out, PyArena*
                                 arena);
 static int obj2ast_slice(PyObject* obj, slice_ty* out, PyArena* arena);
 static int obj2ast_boolop(PyObject* obj, boolop_ty* out, PyArena* arena);
+static int obj2ast_coalesceop(PyObject* obj, coalesceop_ty* out, PyArena*
+                              arena);
 static int obj2ast_operator(PyObject* obj, operator_ty* out, PyArena* arena);
 static int obj2ast_unaryop(PyObject* obj, unaryop_ty* out, PyArena* arena);
 static int obj2ast_cmpop(PyObject* obj, cmpop_ty* out, PyArena* arena);
@@ -1784,6 +1811,38 @@ BinOp(expr_ty left, operator_ty op, expr_ty right, int lineno, int col_offset,
     p->v.BinOp.left = left;
     p->v.BinOp.op = op;
     p->v.BinOp.right = right;
+    p->lineno = lineno;
+    p->col_offset = col_offset;
+    return p;
+}
+
+expr_ty
+CoalesceOp(expr_ty left, coalesceop_ty op, expr_ty right, int lineno, int
+           col_offset, PyArena *arena)
+{
+    expr_ty p;
+    if (!left) {
+        PyErr_SetString(PyExc_ValueError,
+                        "field left is required for CoalesceOp");
+        return NULL;
+    }
+    if (!op) {
+        PyErr_SetString(PyExc_ValueError,
+                        "field op is required for CoalesceOp");
+        return NULL;
+    }
+    if (!right) {
+        PyErr_SetString(PyExc_ValueError,
+                        "field right is required for CoalesceOp");
+        return NULL;
+    }
+    p = (expr_ty)PyArena_Malloc(arena, sizeof(*p));
+    if (!p)
+        return NULL;
+    p->kind = CoalesceOp_kind;
+    p->v.CoalesceOp.left = left;
+    p->v.CoalesceOp.op = op;
+    p->v.CoalesceOp.right = right;
     p->lineno = lineno;
     p->col_offset = col_offset;
     return p;
@@ -3086,6 +3145,25 @@ ast2obj_expr(void* _o)
             goto failed;
         Py_DECREF(value);
         break;
+    case CoalesceOp_kind:
+        result = PyType_GenericNew(CoalesceOp_type, NULL, NULL);
+        if (!result) goto failed;
+        value = ast2obj_expr(o->v.CoalesceOp.left);
+        if (!value) goto failed;
+        if (_PyObject_SetAttrId(result, &PyId_left, value) == -1)
+            goto failed;
+        Py_DECREF(value);
+        value = ast2obj_coalesceop(o->v.CoalesceOp.op);
+        if (!value) goto failed;
+        if (_PyObject_SetAttrId(result, &PyId_op, value) == -1)
+            goto failed;
+        Py_DECREF(value);
+        value = ast2obj_expr(o->v.CoalesceOp.right);
+        if (!value) goto failed;
+        if (_PyObject_SetAttrId(result, &PyId_right, value) == -1)
+            goto failed;
+        Py_DECREF(value);
+        break;
     case UnaryOp_kind:
         result = PyType_GenericNew(UnaryOp_type, NULL, NULL);
         if (!result) goto failed;
@@ -3499,6 +3577,9 @@ PyObject* ast2obj_expr_context(expr_context_ty o)
         case Param:
             Py_INCREF(Param_singleton);
             return Param_singleton;
+        case LoadIfNotNone:
+            Py_INCREF(LoadIfNotNone_singleton);
+            return LoadIfNotNone_singleton;
         default:
             /* should never happen, but just in case ... */
             PyErr_Format(PyExc_SystemError, "unknown expr_context found");
@@ -3572,6 +3653,18 @@ PyObject* ast2obj_boolop(boolop_ty o)
         default:
             /* should never happen, but just in case ... */
             PyErr_Format(PyExc_SystemError, "unknown boolop found");
+            return NULL;
+    }
+}
+PyObject* ast2obj_coalesceop(coalesceop_ty o)
+{
+    switch(o) {
+        case Coalesce:
+            Py_INCREF(Coalesce_singleton);
+            return Coalesce_singleton;
+        default:
+            /* should never happen, but just in case ... */
+            PyErr_Format(PyExc_SystemError, "unknown coalesceop found");
             return NULL;
     }
 }
@@ -5887,6 +5980,58 @@ obj2ast_expr(PyObject* obj, expr_ty* out, PyArena* arena)
         if (*out == NULL) goto failed;
         return 0;
     }
+    isinstance = PyObject_IsInstance(obj, (PyObject*)CoalesceOp_type);
+    if (isinstance == -1) {
+        return 1;
+    }
+    if (isinstance) {
+        expr_ty left;
+        coalesceop_ty op;
+        expr_ty right;
+
+        if (_PyObject_LookupAttrId(obj, &PyId_left, &tmp) < 0) {
+            return 1;
+        }
+        if (tmp == NULL) {
+            PyErr_SetString(PyExc_TypeError, "required field \"left\" missing from CoalesceOp");
+            return 1;
+        }
+        else {
+            int res;
+            res = obj2ast_expr(tmp, &left, arena);
+            if (res != 0) goto failed;
+            Py_CLEAR(tmp);
+        }
+        if (_PyObject_LookupAttrId(obj, &PyId_op, &tmp) < 0) {
+            return 1;
+        }
+        if (tmp == NULL) {
+            PyErr_SetString(PyExc_TypeError, "required field \"op\" missing from CoalesceOp");
+            return 1;
+        }
+        else {
+            int res;
+            res = obj2ast_coalesceop(tmp, &op, arena);
+            if (res != 0) goto failed;
+            Py_CLEAR(tmp);
+        }
+        if (_PyObject_LookupAttrId(obj, &PyId_right, &tmp) < 0) {
+            return 1;
+        }
+        if (tmp == NULL) {
+            PyErr_SetString(PyExc_TypeError, "required field \"right\" missing from CoalesceOp");
+            return 1;
+        }
+        else {
+            int res;
+            res = obj2ast_expr(tmp, &right, arena);
+            if (res != 0) goto failed;
+            Py_CLEAR(tmp);
+        }
+        *out = CoalesceOp(left, op, right, lineno, col_offset, arena);
+        if (*out == NULL) goto failed;
+        return 0;
+    }
     isinstance = PyObject_IsInstance(obj, (PyObject*)UnaryOp_type);
     if (isinstance == -1) {
         return 1;
@@ -7180,6 +7325,14 @@ obj2ast_expr_context(PyObject* obj, expr_context_ty* out, PyArena* arena)
         *out = Param;
         return 0;
     }
+    isinstance = PyObject_IsInstance(obj, (PyObject *)LoadIfNotNone_type);
+    if (isinstance == -1) {
+        return 1;
+    }
+    if (isinstance) {
+        *out = LoadIfNotNone;
+        return 0;
+    }
 
     PyErr_Format(PyExc_TypeError, "expected some sort of expr_context, but got %R", obj);
     return 1;
@@ -7343,6 +7496,24 @@ obj2ast_boolop(PyObject* obj, boolop_ty* out, PyArena* arena)
     }
 
     PyErr_Format(PyExc_TypeError, "expected some sort of boolop, but got %R", obj);
+    return 1;
+}
+
+int
+obj2ast_coalesceop(PyObject* obj, coalesceop_ty* out, PyArena* arena)
+{
+    int isinstance;
+
+    isinstance = PyObject_IsInstance(obj, (PyObject *)Coalesce_type);
+    if (isinstance == -1) {
+        return 1;
+    }
+    if (isinstance) {
+        *out = Coalesce;
+        return 0;
+    }
+
+    PyErr_Format(PyExc_TypeError, "expected some sort of coalesceop, but got %R", obj);
     return 1;
 }
 
@@ -8219,6 +8390,8 @@ PyInit__ast(void)
         NULL;
     if (PyDict_SetItemString(d, "BinOp", (PyObject*)BinOp_type) < 0) return
         NULL;
+    if (PyDict_SetItemString(d, "CoalesceOp", (PyObject*)CoalesceOp_type) < 0)
+        return NULL;
     if (PyDict_SetItemString(d, "UnaryOp", (PyObject*)UnaryOp_type) < 0) return
         NULL;
     if (PyDict_SetItemString(d, "Lambda", (PyObject*)Lambda_type) < 0) return
@@ -8280,6 +8453,8 @@ PyInit__ast(void)
         return NULL;
     if (PyDict_SetItemString(d, "Param", (PyObject*)Param_type) < 0) return
         NULL;
+    if (PyDict_SetItemString(d, "LoadIfNotNone", (PyObject*)LoadIfNotNone_type)
+        < 0) return NULL;
     if (PyDict_SetItemString(d, "slice", (PyObject*)slice_type) < 0) return
         NULL;
     if (PyDict_SetItemString(d, "Slice", (PyObject*)Slice_type) < 0) return
@@ -8292,6 +8467,10 @@ PyInit__ast(void)
         NULL;
     if (PyDict_SetItemString(d, "And", (PyObject*)And_type) < 0) return NULL;
     if (PyDict_SetItemString(d, "Or", (PyObject*)Or_type) < 0) return NULL;
+    if (PyDict_SetItemString(d, "coalesceop", (PyObject*)coalesceop_type) < 0)
+        return NULL;
+    if (PyDict_SetItemString(d, "Coalesce", (PyObject*)Coalesce_type) < 0)
+        return NULL;
     if (PyDict_SetItemString(d, "operator", (PyObject*)operator_type) < 0)
         return NULL;
     if (PyDict_SetItemString(d, "Add", (PyObject*)Add_type) < 0) return NULL;
