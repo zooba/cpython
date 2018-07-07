@@ -1125,6 +1125,12 @@ ast_for_augassign(struct compiling *c, const node *n)
                 return Mult;
         case '@':
             return MatMult;
+        case '?':
+            if (STR(n)[1] == '?') {
+                return Coalesce;
+            }
+            PyErr_Format(PyExc_SystemError, "invalid augassign: %s", STR(n));
+            return (operator_ty)0;
         default:
             PyErr_Format(PyExc_SystemError, "invalid augassign: %s", STR(n));
             return (operator_ty)0;
@@ -2920,7 +2926,7 @@ ast_for_expr_stmt(struct compiling *c, const node *n)
        annassign: ':' test ['=' test]
        testlist_star_expr: (test|star_expr) (',' test|star_expr)* [',']
        augassign: '+=' | '-=' | '*=' | '@=' | '/=' | '%=' | '&=' | '|=' | '^='
-                | '<<=' | '>>=' | '**=' | '//='
+                | '<<=' | '>>=' | '**=' | '//=' | '??='
        test: ... here starts the operator precedence dance
      */
 
