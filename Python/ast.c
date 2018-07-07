@@ -2515,13 +2515,36 @@ ast_for_atom_expr(struct compiling *c, const node *n)
 }
 
 static expr_ty
+ast_for_coalesce(struct compiling *c, const node *n)
+{
+    /* coalesce: atom trailer* ['??' factor]
+     */
+    expr_ty e;
+    REQ(n, coalesce);
+    e = ast_for_atom_expr(c, CHILD(n, 0));
+    if (!e)
+        return NULL;
+    if (NCH(n) == 1)
+        return e;
+
+    if (TYPE(CHILD(n, NCH(n) - 1)) == factor) {
+        expr_ty f = ast_for_expr(c, CHILD(n, NCH(n) - 1));
+        if (!f) {
+            return NULL;
+        }
+        e = CoalesceOp(e, f, LINENO(n), n->n_col_offset, c->c_arena);
+    }
+    return e;
+}
+
+static expr_ty
 ast_for_power(struct compiling *c, const node *n)
 {
-    /* power: atom trailer* ('**' factor)*
+    /* power: coalesce ['**' factor]
      */
     expr_ty e;
     REQ(n, power);
-    e = ast_for_atom_expr(c, CHILD(n, 0));
+    e = ast_for_coalesce(c, CHILD(n, 0));
     if (!e)
         return NULL;
     if (NCH(n) == 1)
@@ -2568,10 +2591,10 @@ ast_for_expr(struct compiling *c, const node *n)
        and_expr: shift_expr ('&' shift_expr)*
        shift_expr: arith_expr (('<<'|'>>') arith_expr)*
        arith_expr: term (('+'|'-') term)*
-       term: coalesce (('*'|'@'|'/'|'%'|'//') coalesce)*
-       coalesce: factor ('??' factor)*
+       term: factor (('*'|'@'|'/'|'%'|'//') factor)*
        factor: ('+'|'-'|'~') factor | power
-       power: atom_expr ['**' factor]
+       power: coalesce ['**' factor]
+       coalesce: atom_expr ['??' factor]
        atom_expr: ['await'] atom trailer*
        yield_expr: 'yield' [yield_arg]
     */
@@ -2610,25 +2633,6 @@ ast_for_expr(struct compiling *c, const node *n)
             }
             assert(!strcmp(STR(CHILD(n, 1)), "or"));
             return BoolOp(Or, seq, LINENO(n), n->n_col_offset, c->c_arena);
-        case coalesce:
-            if (NCH(n) == 1) {
-                n = CHILD(n, 0);
-                goto loop;
-            }
-            else {
-                expr_ty expr1, expr2;
-
-                expr1 = ast_for_expr(c, CHILD(n, 0));
-                if (!expr1)
-                    return NULL;
-
-                expr2 = ast_for_expr(c, CHILD(n, 2));
-                if (!expr2)
-                    return NULL;
-
-                return CoalesceOp(expr1, Coalesce, expr2, LINENO(n),
-                    n->n_col_offset, c->c_arena);
-            }
         case not_test:
             if (NCH(n) == 1) {
                 n = CHILD(n, 0);
