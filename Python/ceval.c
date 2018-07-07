@@ -2822,11 +2822,9 @@ main_loop:
             DISPATCH();
         }
 
-        TARGET(JUMP_IF_NONE_OR_POP) {
+        TARGET(JUMP_IF_NONE) {
             PyObject *cond = TOP();
             if (cond != Py_None) {
-                STACKADJ(-1);
-                Py_DECREF(cond);
                 FAST_DISPATCH();
             }
             JUMPTO(oparg);
@@ -2835,12 +2833,12 @@ main_loop:
 
         TARGET(JUMP_IF_NOT_NONE_OR_POP) {
             PyObject *cond = TOP();
-            if (cond == Py_None) {
-                STACKADJ(-1);
-                Py_DECREF(cond);
+            if (cond != Py_None) {
+                JUMPTO(oparg);
                 FAST_DISPATCH();
             }
-            JUMPTO(oparg);
+            STACKADJ(-1);
+            Py_DECREF(cond);
             DISPATCH();
         }
 

@@ -137,6 +137,8 @@ struct compiler_unit {
     int u_col_offset;      /* the offset of the current stmt */
     int u_lineno_set;  /* boolean to indicate whether instr
                           has been generated with current lineno */
+
+    basicblock *u_trailerblock; /* point to current trailer block */
 };
 
 /* This struct captures the global state of a compilation.
@@ -1020,9 +1022,11 @@ stack_effect(int opcode, int oparg, int jump)
         case JUMP_ABSOLUTE:
             return 0;
 
+        case JUMP_IF_NONE:
+            return 0;
+
         case JUMP_IF_TRUE_OR_POP:
         case JUMP_IF_FALSE_OR_POP:
-        case JUMP_IF_NONE_OR_POP:
         case JUMP_IF_NOT_NONE_OR_POP:
             return jump ? 0 : -1;
 
@@ -3406,6 +3410,41 @@ compiler_coalesceop(struct compiler *c, expr_ty e)
 }
 
 static int
+compiler_attr_ifnotnone(struct compiler *c, expr_ty e)
+{
+    basicblock *end;
+
+    assert(e->kind == Attribute_kind);
+    assert(e->v.Attribute.ctx == LoadIfNotNone);
+    end = compiler_new_block(c);
+    if (end == NULL)
+        return 0;
+    ADDOP_JABS(c, JUMP_IF_NONE, end);
+    ADDOP_NAME(c, LOAD_ATTR, e->v.Attribute.attr, names);
+    // HACK: block needs to go at end of trailers!
+    compiler_use_next_block(c, end);
+    return 1;
+}
+
+static int
+compiler_subscript_ifnotnone(struct compiler *c, expr_ty e)
+{
+    basicblock *end;
+
+    assert(e->kind == Subscript_kind);
+    assert(e->v.Attribute.ctx == LoadIfNotNone);
+    end = compiler_new_block(c);
+    if (end == NULL)
+        return 0;
+    ADDOP_JABS(c, JUMP_IF_NONE, end);
+    VISIT(c, expr, e->v.Subscript.value);
+    VISIT_SLICE(c, e->v.Subscript.slice, Load);
+    // HACK: block needs to go at end of trailers!
+    compiler_use_next_block(c, end);
+    return 1;
+}
+
+static int
 starunpack_helper(struct compiler *c, asdl_seq *elts,
                   int single_op, int inner_op, int outer_op)
 {
@@ -4563,8 +4602,7 @@ compiler_visit_expr(struct compiler *c, expr_ty e)
             ADDOP_NAME(c, LOAD_ATTR, e->v.Attribute.attr, names);
             break;
         case LoadIfNotNone:
-            ADDOP_NAME(c, LOAD_ATTR, e->v.Attribute.attr, names);
-            break;
+            return compiler_attr_ifnotnone(c, e);
         case AugStore:
             ADDOP(c, ROT_TWO);
             /* Fall through */
@@ -4591,6 +4629,8 @@ compiler_visit_expr(struct compiler *c, expr_ty e)
             VISIT(c, expr, e->v.Subscript.value);
             VISIT_SLICE(c, e->v.Subscript.slice, Load);
             break;
+        case LoadIfNotNone:
+            return compiler_subscript_ifnotnone(c, e);
         case AugStore:
             VISIT_SLICE(c, e->v.Subscript.slice, AugStore);
             break;
