@@ -2591,33 +2591,44 @@ ast_for_expr(struct compiling *c, const node *n)
             /* Fallthrough */
         case or_test:
         case and_test:
+            if (NCH(n) == 1) {
+                n = CHILD(n, 0);
+                goto loop;
+            }
+            seq = _Py_asdl_seq_new((NCH(n) + 1) / 2, c->c_arena);
+            if (!seq)
+                return NULL;
+            for (i = 0; i < NCH(n); i += 2) {
+                expr_ty e = ast_for_expr(c, CHILD(n, i));
+                if (!e)
+                    return NULL;
+                asdl_seq_SET(seq, i / 2, e);
+            }
+            if (!strcmp(STR(CHILD(n, 1)), "and")) {
+                return BoolOp(And, seq, LINENO(n), n->n_col_offset,
+                              c->c_arena);
+            }
+            assert(!strcmp(STR(CHILD(n, 1)), "or"));
+            return BoolOp(Or, seq, LINENO(n), n->n_col_offset, c->c_arena);
         case coalesce:
             if (NCH(n) == 1) {
                 n = CHILD(n, 0);
                 goto loop;
             }
             else {
-                boolop_ty op;
-                seq = _Py_asdl_seq_new((NCH(n) + 1) / 2, c->c_arena);
-                if (!seq)
+                expr_ty expr1, expr2;
+
+                expr1 = ast_for_expr(c, CHILD(n, 0));
+                if (!expr1)
                     return NULL;
-                for (i = 0; i < NCH(n); i += 2) {
-                    expr_ty e = ast_for_expr(c, CHILD(n, i));
-                    if (!e)
-                        return NULL;
-                    asdl_seq_SET(seq, i / 2, e);
-                }
-                if (!strcmp(STR(CHILD(n, 1)), "and")) {
-                    op = And;
-                } else if (!strcmp(STR(CHILD(n, 1)), "??")) {
-                    op = Coalesce;
-                } else {
-                    assert(!strcmp(STR(CHILD(n, 1)), "or"));
-                    op = Or;
-                }
-                return BoolOp(op, seq, LINENO(n), n->n_col_offset, c->c_arena);
+
+                expr2 = ast_for_expr(c, CHILD(n, 2));
+                if (!expr2)
+                    return NULL;
+
+                return CoalesceOp(expr1, Coalesce, expr2, LINENO(n),
+                    n->n_col_offset, c->c_arena);
             }
-            break;
         case not_test:
             if (NCH(n) == 1) {
                 n = CHILD(n, 0);

@@ -2824,7 +2824,6 @@ main_loop:
 
         TARGET(JUMP_IF_NONE_OR_POP) {
             PyObject *cond = TOP();
-            int err;
             if (cond != Py_None) {
                 STACKADJ(-1);
                 Py_DECREF(cond);
@@ -2836,7 +2835,6 @@ main_loop:
 
         TARGET(JUMP_IF_NOT_NONE_OR_POP) {
             PyObject *cond = TOP();
-            int err;
             if (cond == Py_None) {
                 STACKADJ(-1);
                 Py_DECREF(cond);

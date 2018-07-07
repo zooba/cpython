@@ -518,9 +518,6 @@
     <ClCompile Include="..\Modules\_pickle.c">
       <Filter>Modules</Filter>
     </ClCompile>
-    <ClCompile Include="..\Modules\_queuemodule.c">
-      <Filter>Modules</Filter>
-    </ClCompile>
     <ClCompile Include="..\Modules\_randommodule.c">
       <Filter>Modules</Filter>
     </ClCompile>
@@ -857,9 +854,6 @@
     <ClCompile Include="..\Python\compile.c">
       <Filter>Python</Filter>
     </ClCompile>
-    <ClCompile Include="..\Python\context.h">
-      <Filter>Python</Filter>
-    </ClCompile>
     <ClCompile Include="..\Python\dynamic_annotations.c">
       <Filter>Python</Filter>
     </ClCompile>
@@ -900,9 +894,6 @@
       <Filter>Python</Filter>
     </ClCompile>
     <ClCompile Include="..\Python\graminit.c">
-      <Filter>Python</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Python\hamt.h">
       <Filter>Python</Filter>
     </ClCompile>
     <ClCompile Include="..\Python\import.c">
@@ -1013,9 +1004,6 @@
     <ClCompile Include="..\Objects\odictobject.c">
       <Filter>Objects</Filter>
     </ClCompile>
-    <ClCompile Include="..\PC\_findvs.cpp">
-      <Filter>PC</Filter>
-    </ClCompile>
     <ClCompile Include="..\Modules\_asynciomodule.c">
       <Filter>Modules</Filter>
     </ClCompile>
@@ -1055,10 +1043,18 @@
     <ClCompile Include="$(zlibDir)\zutil.c">
       <Filter>Modules\zlib</Filter>
     </ClCompile>
+    <ClCompile Include="..\Modules\_xxsubinterpretersmodule.c" />
+    <ClCompile Include="..\Python\context.c" />
+    <ClCompile Include="..\Python\hamt.c" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\PC\python_nt.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Parser\Python.asdl">
+      <Filter>Parser</Filter>
+    </None>
   </ItemGroup>
 </Project>

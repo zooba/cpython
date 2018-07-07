@@ -2247,11 +2247,6 @@ compiler_jump_if(struct compiler *c, expr_ty e, basicblock *next, int cond)
             compiler_use_next_block(c, next2);
         return 1;
     }
-    case CoalesceOp_kind: {
-        VISIT(c, expr, e);
-        ADDOP_JABS(c, JUMP_IF_NOT_NONE_OR_POP, next);
-        return 1;
-    }
     case IfExp_kind: {
         basicblock *end, *next2;
         end = compiler_new_block(c);
@@ -3395,6 +3390,22 @@ compiler_boolop(struct compiler *c, expr_ty e)
 }
 
 static int
+compiler_coalesceop(struct compiler *c, expr_ty e)
+{
+    basicblock *end;
+
+    assert(e->kind == CoalesceOp_kind);
+    end = compiler_new_block(c);
+    if (end == NULL)
+        return 0;
+    VISIT(c, expr, e->v.CoalesceOp.left);
+    ADDOP_JABS(c, JUMP_IF_NOT_NONE_OR_POP, end);
+    VISIT(c, expr, e->v.CoalesceOp.right);
+    compiler_use_next_block(c, end);
+    return 1;
+}
+
+static int
 starunpack_helper(struct compiler *c, asdl_seq *elts,
                   int single_op, int inner_op, int outer_op)
 {
@@ -4451,6 +4462,8 @@ compiler_visit_expr(struct compiler *c, expr_ty e)
     switch (e->kind) {
     case BoolOp_kind:
         return compiler_boolop(c, e);
+    case CoalesceOp_kind:
+        return compiler_coalesceop(c, e);
     case BinOp_kind:
         VISIT(c, expr, e->v.BinOp.left);
         VISIT(c, expr, e->v.BinOp.right);
