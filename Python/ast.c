@@ -921,8 +921,6 @@ get_operator(const node *n)
             return FloorDiv;
         case PERCENT:
             return Mod;
-        case MAYBEMAYBE:
-            return Coalesce;
         default:
             return (operator_ty)0;
     }

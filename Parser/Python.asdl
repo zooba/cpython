@@ -104,8 +104,9 @@ module Python
 
     boolop = And | Or
 
+    -- Coalesce operator is only used for augassign
     operator = Add | Sub | Mult | MatMult | Div | Mod | Pow | LShift
-                 | RShift | BitOr | BitXor | BitAnd | FloorDiv
+                 | RShift | BitOr | BitXor | BitAnd | FloorDiv | Coalesce
 
     unaryop = Invert | Not | UAdd | USub
 
