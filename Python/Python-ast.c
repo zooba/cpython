@@ -401,7 +401,7 @@ static PyTypeObject *operator_type;
 static PyObject *Add_singleton, *Sub_singleton, *Mult_singleton,
 *MatMult_singleton, *Div_singleton, *Mod_singleton, *Pow_singleton,
 *LShift_singleton, *RShift_singleton, *BitOr_singleton, *BitXor_singleton,
-*BitAnd_singleton, *FloorDiv_singleton;
+*BitAnd_singleton, *FloorDiv_singleton, *Coalesce_singleton;
 static PyObject* ast2obj_operator(operator_ty);
 static PyTypeObject *Add_type;
 static PyTypeObject *Sub_type;
@@ -416,6 +416,7 @@ static PyTypeObject *BitOr_type;
 static PyTypeObject *BitXor_type;
 static PyTypeObject *BitAnd_type;
 static PyTypeObject *FloorDiv_type;
+static PyTypeObject *Coalesce_type;
 static PyTypeObject *unaryop_type;
 static PyObject *Invert_singleton, *Not_singleton, *UAdd_singleton,
 *USub_singleton;
@@ -1088,6 +1089,10 @@ static int init_types(void)
     if (!FloorDiv_type) return 0;
     FloorDiv_singleton = PyType_GenericNew(FloorDiv_type, NULL, NULL);
     if (!FloorDiv_singleton) return 0;
+    Coalesce_type = make_type("Coalesce", operator_type, NULL, 0);
+    if (!Coalesce_type) return 0;
+    Coalesce_singleton = PyType_GenericNew(Coalesce_type, NULL, NULL);
+    if (!Coalesce_singleton) return 0;
     unaryop_type = make_type("unaryop", &AST_type, NULL, 0);
     if (!unaryop_type) return 0;
     if (!add_attributes(unaryop_type, NULL, 0)) return 0;
@@ -3673,6 +3678,9 @@ PyObject* ast2obj_operator(operator_ty o)
         case FloorDiv:
             Py_INCREF(FloorDiv_singleton);
             return FloorDiv_singleton;
+        case Coalesce:
+            Py_INCREF(Coalesce_singleton);
+            return Coalesce_singleton;
         default:
             /* should never happen, but just in case ... */
             PyErr_Format(PyExc_SystemError, "unknown operator found");
@@ -7557,6 +7565,14 @@ obj2ast_operator(PyObject* obj, operator_ty* out, PyArena* arena)
         *out = FloorDiv;
         return 0;
     }
+    isinstance = PyObject_IsInstance(obj, (PyObject *)Coalesce_type);
+    if (isinstance == -1) {
+        return 1;
+    }
+    if (isinstance) {
+        *out = Coalesce;
+        return 0;
+    }
 
     PyErr_Format(PyExc_TypeError, "expected some sort of operator, but got %R", obj);
     return 1;
@@ -8419,6 +8435,8 @@ PyInit__ast(void)
     if (PyDict_SetItemString(d, "BitAnd", (PyObject*)BitAnd_type) < 0) return
         NULL;
     if (PyDict_SetItemString(d, "FloorDiv", (PyObject*)FloorDiv_type) < 0)
+        return NULL;
+    if (PyDict_SetItemString(d, "Coalesce", (PyObject*)Coalesce_type) < 0)
         return NULL;
     if (PyDict_SetItemString(d, "unaryop", (PyObject*)unaryop_type) < 0) return
         NULL;
