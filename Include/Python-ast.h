@@ -15,8 +15,6 @@ typedef struct _slice *slice_ty;
 
 typedef enum _boolop { And=1, Or=2 } boolop_ty;
 
-typedef enum _coalesceop { Coalesce=1 } coalesceop_ty;
-
 typedef enum _operator { Add=1, Sub=2, Mult=3, MatMult=4, Div=5, Mod=6, Pow=7,
                          LShift=8, RShift=9, BitOr=10, BitXor=11, BitAnd=12,
                          FloorDiv=13 } operator_ty;
@@ -232,7 +230,6 @@ struct _expr {
 
         struct {
             expr_ty left;
-            coalesceop_ty op;
             expr_ty right;
         } CoalesceOp;
 
@@ -536,9 +533,9 @@ expr_ty _Py_BoolOp(boolop_ty op, asdl_seq * values, int lineno, int col_offset,
 #define BinOp(a0, a1, a2, a3, a4, a5) _Py_BinOp(a0, a1, a2, a3, a4, a5)
 expr_ty _Py_BinOp(expr_ty left, operator_ty op, expr_ty right, int lineno, int
                   col_offset, PyArena *arena);
-#define CoalesceOp(a0, a1, a2, a3, a4, a5) _Py_CoalesceOp(a0, a1, a2, a3, a4, a5)
-expr_ty _Py_CoalesceOp(expr_ty left, coalesceop_ty op, expr_ty right, int
-                       lineno, int col_offset, PyArena *arena);
+#define CoalesceOp(a0, a1, a2, a3, a4) _Py_CoalesceOp(a0, a1, a2, a3, a4)
+expr_ty _Py_CoalesceOp(expr_ty left, expr_ty right, int lineno, int col_offset,
+                       PyArena *arena);
 #define UnaryOp(a0, a1, a2, a3, a4) _Py_UnaryOp(a0, a1, a2, a3, a4)
 expr_ty _Py_UnaryOp(unaryop_ty op, expr_ty operand, int lineno, int col_offset,
                     PyArena *arena);
