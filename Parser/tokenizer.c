@@ -113,6 +113,7 @@ const char *_PyParser_TokenNames[] = {
     "MAYBEDOT",
     "MAYBELSQB",
     "MAYBEMAYBE",
+    "MAYBEMAYBEEQUAL",
     "<N_TOKENS>"
 };
 
@@ -1284,6 +1285,11 @@ PyToken_ThreeChars(int c1, int c2, int c3)
                 return ELLIPSIS;
             }
             break;
+        }
+        break;
+    case '?':
+        if (c2 == '?' && c3 == '=') {
+            return MAYBEMAYBEEQUAL;
         }
         break;
     }
