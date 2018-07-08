@@ -138,7 +138,9 @@ struct compiler_unit {
     int u_lineno_set;  /* boolean to indicate whether instr
                           has been generated with current lineno */
 
-    basicblock *u_trailerblock; /* point to current trailer block */
+    /* for short-circuiting trailer evaluation, we might need to allocate
+       a block. */
+    basicblock *u_trailerblock;
 };
 
 /* This struct captures the global state of a compilation.
@@ -181,6 +183,7 @@ static int compiler_nameop(struct compiler *, identifier, expr_context_ty);
 static PyCodeObject *compiler_mod(struct compiler *, mod_ty);
 static int compiler_visit_stmt(struct compiler *, stmt_ty);
 static int compiler_visit_keyword(struct compiler *, keyword_ty);
+static int compiler_visit_expr_no_short_circuit(struct compiler *, expr_ty);
 static int compiler_visit_expr(struct compiler *, expr_ty);
 static int compiler_augassign(struct compiler *, stmt_ty);
 static int compiler_annassign(struct compiler *, stmt_ty);
@@ -515,6 +518,13 @@ compiler_unit_free(struct compiler_unit *u)
         PyObject_Free((void *)b);
         b = next;
     }
+    b = u->u_trailerblock;
+    if (b != NULL) {
+        if (b->b_instr != NULL) {
+            PyObject_Free((void *)b->b_instr);
+        }
+        PyObject_Free((void *)b);
+    }
     Py_CLEAR(u->u_ste);
     Py_CLEAR(u->u_name);
     Py_CLEAR(u->u_qualname);
@@ -599,6 +609,7 @@ compiler_enter_scope(struct compiler *c, identifier name,
         compiler_unit_free(u);
         return 0;
     }
+    u->u_trailerblock = NULL;
 
     u->u_private = NULL;
 
@@ -773,6 +784,18 @@ compiler_use_next_block(struct compiler *c, basicblock *block)
     c->u->u_curblock->b_next = block;
     c->u->u_curblock = block;
     return block;
+}
+
+static basicblock *
+compiler_get_trailerblock(struct compiler *c)
+{
+    basicblock *b;
+
+    b = c->u->u_trailerblock;
+    if (b == NULL) {
+        c->u->u_trailerblock = b = compiler_new_block(c);
+    }
+    return b;
 }
 
 /* Returns the offset of the next instruction in the current block's
@@ -3416,13 +3439,11 @@ compiler_attr_ifnotnone(struct compiler *c, expr_ty e)
 
     assert(e->kind == Attribute_kind);
     assert(e->v.Attribute.ctx == LoadIfNotNone);
-    end = compiler_new_block(c);
+    end = compiler_get_trailerblock(c);
     if (end == NULL)
         return 0;
     ADDOP_JABS(c, JUMP_IF_NONE, end);
     ADDOP_NAME(c, LOAD_ATTR, e->v.Attribute.attr, names);
-    // HACK: block needs to go at end of trailers!
-    compiler_use_next_block(c, end);
     return 1;
 }
 
@@ -3433,14 +3454,12 @@ compiler_subscript_ifnotnone(struct compiler *c, expr_ty e)
 
     assert(e->kind == Subscript_kind);
     assert(e->v.Attribute.ctx == LoadIfNotNone);
-    end = compiler_new_block(c);
+    end = compiler_get_trailerblock(c);
     if (end == NULL)
         return 0;
     ADDOP_JABS(c, JUMP_IF_NONE, end);
     VISIT(c, expr, e->v.Subscript.value);
     VISIT_SLICE(c, e->v.Subscript.slice, Load);
-    // HACK: block needs to go at end of trailers!
-    compiler_use_next_block(c, end);
     return 1;
 }
 
@@ -3694,7 +3713,7 @@ maybe_optimize_method_call(struct compiler *c, expr_ty e)
     }
 
     /* Alright, we can optimize the code. */
-    VISIT(c, expr, meth->v.Attribute.value);
+    VISIT(c, expr_no_short_circuit, meth->v.Attribute.value);
     ADDOP_NAME(c, LOAD_METHOD, meth->v.Attribute.attr, names);
     VISIT_SEQ(c, expr, e->v.Call.args);
     ADDOP_I(c, CALL_METHOD, asdl_seq_LEN(e->v.Call.args));
@@ -3707,7 +3726,7 @@ compiler_call(struct compiler *c, expr_ty e)
     if (maybe_optimize_method_call(c, e) > 0)
         return 1;
 
-    VISIT(c, expr, e->v.Call.func);
+    VISIT(c, expr_no_short_circuit, e->v.Call.func);
     return compiler_call_helper(c, 0,
                                 e->v.Call.args,
                                 e->v.Call.keywords);
@@ -4489,6 +4508,27 @@ compiler_with(struct compiler *c, stmt_ty s, int pos)
 static int
 compiler_visit_expr(struct compiler *c, expr_ty e)
 {
+    /* A whole expression is the context at which short circuiting
+       applies. So we handle the blocks before/after in this function. */
+    basicblock *previous_trailer;
+    int result;
+
+    previous_trailer = c->u->u_trailerblock;
+
+    result = compiler_visit_expr_no_short_circuit(c, e);
+
+    if (c->u->u_trailerblock) {
+        compiler_use_next_block(c, c->u->u_trailerblock);
+    }
+
+    c->u->u_trailerblock = previous_trailer;
+
+    return result;
+}
+
+static int
+compiler_visit_expr_no_short_circuit(struct compiler *c, expr_ty e)
+{
     /* If expr e has a different line number than the last expr/stmt,
        set a new line number for the next instruction.
     */
@@ -4593,7 +4633,7 @@ compiler_visit_expr(struct compiler *c, expr_ty e)
     /* The following exprs can be assignment targets. */
     case Attribute_kind:
         if (e->v.Attribute.ctx != AugStore)
-            VISIT(c, expr, e->v.Attribute.value);
+            VISIT(c, expr_no_short_circuit, e->v.Attribute.value);
         switch (e->v.Attribute.ctx) {
         case AugLoad:
             ADDOP(c, DUP_TOP);
@@ -4622,11 +4662,11 @@ compiler_visit_expr(struct compiler *c, expr_ty e)
     case Subscript_kind:
         switch (e->v.Subscript.ctx) {
         case AugLoad:
-            VISIT(c, expr, e->v.Subscript.value);
+            VISIT(c, expr_no_short_circuit, e->v.Subscript.value);
             VISIT_SLICE(c, e->v.Subscript.slice, AugLoad);
             break;
         case Load:
-            VISIT(c, expr, e->v.Subscript.value);
+            VISIT(c, expr_no_short_circuit, e->v.Subscript.value);
             VISIT_SLICE(c, e->v.Subscript.slice, Load);
             break;
         case LoadIfNotNone:
@@ -4635,11 +4675,11 @@ compiler_visit_expr(struct compiler *c, expr_ty e)
             VISIT_SLICE(c, e->v.Subscript.slice, AugStore);
             break;
         case Store:
-            VISIT(c, expr, e->v.Subscript.value);
+            VISIT(c, expr_no_short_circuit, e->v.Subscript.value);
             VISIT_SLICE(c, e->v.Subscript.slice, Store);
             break;
         case Del:
-            VISIT(c, expr, e->v.Subscript.value);
+            VISIT(c, expr_no_short_circuit, e->v.Subscript.value);
             VISIT_SLICE(c, e->v.Subscript.slice, Del);
             break;
         case Param:
