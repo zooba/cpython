@@ -2051,7 +2051,7 @@ expression support in the :mod:`re` module).
 .. method:: str.upper()
 
    Return a copy of the string with all the cased characters [4]_ converted to
-   uppercase.  Note that ``str.upper().isupper()`` might be ``False`` if ``s``
+   uppercase.  Note that ``s.upper().isupper()`` might be ``False`` if ``s``
    contains uncased characters or if the Unicode category of the resulting
    character(s) is not "Lu" (Letter, uppercase), but e.g. "Lt" (Letter,
    titlecase).
@@ -2315,7 +2315,7 @@ data and are closely related to string objects in a variety of other ways.
    While bytes literals and representations are based on ASCII text, bytes
    objects actually behave like immutable sequences of integers, with each
    value in the sequence restricted such that ``0 <= x < 256`` (attempts to
-   violate this restriction will trigger :exc:`ValueError`. This is done
+   violate this restriction will trigger :exc:`ValueError`). This is done
    deliberately to emphasise that while many binary formats include ASCII based
    elements and can be usefully manipulated with some text-oriented algorithms,
    this is not generally the case for arbitrary binary data (blindly applying
@@ -3388,7 +3388,10 @@ Notes:
    The bytearray version of this method does *not* operate in place - it
    always produces a new object, even if no changes were made.
 
-.. seealso:: :pep:`461`.
+.. seealso::
+
+   :pep:`461` - Adding % formatting to bytes and bytearray
+
 .. versionadded:: 3.5
 
 .. _typememoryview:
@@ -3590,6 +3593,25 @@ copying.
          :meth:`tolist` now supports all single character native formats in
          :mod:`struct` module syntax as well as multi-dimensional
          representations.
+
+   .. method:: toreadonly()
+
+      Return a readonly version of the memoryview object.  The original
+      memoryview object is unchanged. ::
+
+         >>> m = memoryview(bytearray(b'abc'))
+         >>> mm = m.toreadonly()
+         >>> mm.tolist()
+         [89, 98, 99]
+         >>> mm[0] = 42
+         Traceback (most recent call last):
+           File "<stdin>", line 1, in <module>
+         TypeError: cannot modify read-only memory
+         >>> m[0] = 43
+         >>> mm.tolist()
+         [43, 98, 99]
+
+      .. versionadded:: 3.8
 
    .. method:: release()
 

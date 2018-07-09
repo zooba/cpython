@@ -609,8 +609,13 @@ class Counter(dict):
 
     @classmethod
     def fromkeys(cls, iterable, v=None):
-        # There is no equivalent method for counters because setting v=1
-        # means that no element can have a count greater than one.
+        # There is no equivalent method for counters because the semantics
+        # would be ambiguous in cases such as Counter.fromkeys('aaabbc', v=2).
+        # Initializing counters to zero values isn't necessary because zero
+        # is already the default value for counter lookups.  Initializing
+        # to one is easily accomplished with Counter(set(iterable)).  For
+        # more exotic cases, create a dictionary first using a dictionary
+        # comprehension or dict.fromkeys().
         raise NotImplementedError(
             'Counter.fromkeys() is undefined.  Use Counter(iterable) instead.')
 
@@ -933,8 +938,7 @@ class ChainMap(_collections_abc.MutableMapping):
 
     @_recursive_repr()
     def __repr__(self):
-        return '{0.__class__.__name__}({1})'.format(
-            self, ', '.join(map(repr, self.maps)))
+        return f'{self.__class__.__name__}({", ".join(map(repr, self.maps))})'
 
     @classmethod
     def fromkeys(cls, iterable, *args):

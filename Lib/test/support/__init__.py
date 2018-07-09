@@ -3,6 +3,7 @@
 if __name__ != 'test.support':
     raise ImportError('support must be imported from the test package')
 
+import asyncio.events
 import collections.abc
 import contextlib
 import errno
@@ -1082,8 +1083,8 @@ def make_bad_fd():
         file.close()
         unlink(TESTFN)
 
-def check_syntax_error(testcase, statement, *, lineno=None, offset=None):
-    with testcase.assertRaises(SyntaxError) as cm:
+def check_syntax_error(testcase, statement, errtext='', *, lineno=None, offset=None):
+    with testcase.assertRaisesRegex(SyntaxError, errtext) as cm:
         compile(statement, '<test string>', 'exec')
     err = cm.exception
     testcase.assertIsNotNone(err.lineno)
@@ -2822,7 +2823,7 @@ def fd_count():
 
 class SaveSignals:
     """
-    Save an restore signal handlers.
+    Save and restore signal handlers.
 
     This class is only able to save/restore signal handlers registered
     by the Python signal module: see bpo-13285 for "external" signal
@@ -2832,7 +2833,7 @@ class SaveSignals:
     def __init__(self):
         import signal
         self.signal = signal
-        self.signals = list(range(1, signal.NSIG))
+        self.signals = signal.valid_signals()
         # SIGKILL and SIGSTOP signals cannot be ignored nor caught
         for signame in ('SIGKILL', 'SIGSTOP'):
             try:
@@ -2880,3 +2881,8 @@ class FakePath:
             raise self.path
         else:
             return self.path
+
+
+def maybe_get_event_loop_policy():
+    """Return the global event loop policy if one is set, else return None."""
+    return asyncio.events._event_loop_policy
