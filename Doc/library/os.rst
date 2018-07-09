@@ -650,7 +650,7 @@ process and user.
 File Object Creation
 --------------------
 
-This function creates new :term:`file objects <file object>`.  (See also
+These functions create new :term:`file objects <file object>`.  (See also
 :func:`~os.open` for opening file descriptors.)
 
 
@@ -660,6 +660,19 @@ This function creates new :term:`file objects <file object>`.  (See also
    alias of the :func:`open` built-in function and accepts the same arguments.
    The only difference is that the first argument of :func:`fdopen` must always
    be an integer.
+
+
+.. function:: open_for_exec(path)
+
+   Opens the provided file with mode ``'rb'``. This function should be used when
+   the intent is to treat the contents as executable code.
+
+   The behavior of this function may be overridden by an earlier call to the
+   :c:func:`PyOS_SetOpenForExecHandler`, however, it should always be considered
+   interchangeable with ``open(path, 'rb')``. Overriding the behavior is
+   intended for additional validation or preprocessing of the file.
+
+   ..versionadded:: 3.8
 
 
 .. _os-fd-ops:
@@ -3671,6 +3684,9 @@ written in Python, such as a mail server's external command delivery program.
    new processes and retrieving their results; using that module is preferable
    to using this function.  See the :ref:`subprocess-replacements` section in
    the :mod:`subprocess` documentation for some helpful recipes.
+
+   This function raises an :func:`auditing event <sys.audit>` ``os.system``
+   with argument ``command``.
 
    .. availability:: Unix, Windows.
 

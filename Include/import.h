@@ -145,6 +145,11 @@ struct _frozen {
 PyAPI_DATA(const struct _frozen *) PyImport_FrozenModules;
 #endif
 
+#ifndef Py_LIMITED_API
+PyAPI_FUNC(PyObject *) PyImport_OpenForImport(const char *utf8path);
+PyAPI_FUNC(int) PyImport_SetOpenForImportHook(void *hook, void *userData);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

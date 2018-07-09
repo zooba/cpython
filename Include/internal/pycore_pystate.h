@@ -118,6 +118,18 @@ struct _xidregitem {
     struct _xidregitem *next;
 };
 
+/* audit hook state */
+
+typedef int(*_Py_AuditHookFunction)(const char *, PyObject *, void *);
+
+typedef struct _Py_AuditHookEntry {
+    struct _Py_AuditHookEntry *next;
+    _Py_AuditHookFunction hookCFunction;
+    union {
+        PyObject *hookCallable;
+        void *userData;
+    };
+} _Py_AuditHookEntry;
 
 /* Full Python runtime state */
 
@@ -154,6 +166,10 @@ typedef struct pyruntimestate {
     struct _warnings_runtime_state warnings;
     struct _ceval_runtime_state ceval;
     struct _gilstate_runtime_state gilstate;
+
+    void *open_for_import_hook;
+    void *open_for_import_userdata;
+    _Py_AuditHookEntry *audit_hook_head;
 
     // XXX Consolidate globals found via the check-c-globals script.
 } _PyRuntimeState;

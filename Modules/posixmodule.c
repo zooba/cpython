@@ -4226,6 +4226,11 @@ os_system_impl(PyObject *module, const Py_UNICODE *command)
 /*[clinic end generated code: output=5b7c3599c068ca42 input=303f5ce97df606b0]*/
 {
     long result;
+
+    if (PySys_Audit("system", "(u)", command) < 0) {
+        return -1;
+    }
+
     Py_BEGIN_ALLOW_THREADS
     _Py_BEGIN_SUPPRESS_IPH
     result = _wsystem(command);
@@ -4248,6 +4253,11 @@ os_system_impl(PyObject *module, PyObject *command)
 {
     long result;
     const char *bytes = PyBytes_AsString(command);
+
+    if (PySys_Audit("system", "(O)", command) < 0) {
+        return -1;
+    }
+
     Py_BEGIN_ALLOW_THREADS
     result = system(bytes);
     Py_END_ALLOW_THREADS
