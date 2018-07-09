@@ -2773,6 +2773,17 @@ main_loop:
             DISPATCH();
         }
 
+        TARGET(POP_JUMP_IF_NOT_NONE) {
+            PyObject *cond = POP();
+            if (cond == Py_None) {
+                Py_DECREF(cond);
+                FAST_DISPATCH();
+            }
+            Py_DECREF(cond);
+            JUMPTO(oparg);
+            DISPATCH();
+        }
+
         TARGET(JUMP_IF_FALSE_OR_POP) {
             PyObject *cond = TOP();
             int err;

@@ -1055,6 +1055,7 @@ stack_effect(int opcode, int oparg, int jump)
 
         case POP_JUMP_IF_FALSE:
         case POP_JUMP_IF_TRUE:
+        case POP_JUMP_IF_NOT_NONE:
             return -1;
 
         case LOAD_GLOBAL:
@@ -3423,8 +3424,9 @@ compiler_coalesceop(struct compiler *c, expr_ty e)
 
     assert(e->kind == CoalesceOp_kind);
     end = compiler_new_block(c);
-    if (end == NULL)
+    if (end == NULL) {
         return 0;
+    }
     VISIT(c, expr, e->v.CoalesceOp.left);
     ADDOP_JABS(c, JUMP_IF_NOT_NONE_OR_POP, end);
     VISIT(c, expr, e->v.CoalesceOp.right);
@@ -3440,8 +3442,9 @@ compiler_attr_ifnotnone(struct compiler *c, expr_ty e)
     assert(e->kind == Attribute_kind);
     assert(e->v.Attribute.ctx == LoadIfNotNone);
     end = compiler_get_trailerblock(c);
-    if (end == NULL)
+    if (end == NULL) {
         return 0;
+    }
     ADDOP_JABS(c, JUMP_IF_NONE, end);
     ADDOP_NAME(c, LOAD_ATTR, e->v.Attribute.attr, names);
     return 1;
@@ -4713,12 +4716,72 @@ compiler_visit_expr_no_short_circuit(struct compiler *c, expr_ty e)
 }
 
 static int
+compiler_augcoalesce(struct compiler *c, stmt_ty s)
+{
+    basicblock *b;
+    expr_ty e = s->v.AugAssign.target;
+    expr_ty auge;
+
+    assert(s->kind == AugAssign_kind);
+    assert(s->v.AugAssign.op == Coalesce);
+
+    switch (e->kind) {
+    case Attribute_kind:
+        auge = Attribute(e->v.Attribute.value, e->v.Attribute.attr,
+            AugLoad, e->lineno, e->col_offset, c->c_arena);
+        if (auge == NULL)
+            return 0;
+        VISIT(c, expr, auge);
+        b = compiler_new_block(c);
+        ADDOP_JABS(c, POP_JUMP_IF_NOT_NONE, b);
+        VISIT(c, expr, s->v.AugAssign.value);
+        auge->v.Attribute.ctx = AugStore;
+        VISIT(c, expr, auge);
+        compiler_use_next_block(c, b);
+        break;
+    case Subscript_kind:
+        auge = Subscript(e->v.Subscript.value, e->v.Subscript.slice,
+            AugLoad, e->lineno, e->col_offset, c->c_arena);
+        if (auge == NULL)
+            return 0;
+        VISIT(c, expr, auge);
+        b = compiler_new_block(c);
+        ADDOP_JABS(c, POP_JUMP_IF_NOT_NONE, b);
+        VISIT(c, expr, s->v.AugAssign.value);
+        auge->v.Subscript.ctx = AugStore;
+        VISIT(c, expr, auge);
+        compiler_use_next_block(c, b);
+        break;
+    case Name_kind:
+        if (!compiler_nameop(c, e->v.Name.id, Load))
+            return 0;
+        b = compiler_new_block(c);
+        ADDOP_JABS(c, POP_JUMP_IF_NOT_NONE, b);
+        VISIT(c, expr, s->v.AugAssign.value);
+        if (!compiler_nameop(c, e->v.Name.id, Store)) {
+            return 0;
+        }
+        compiler_use_next_block(c, b);
+        break;
+    default:
+        PyErr_Format(PyExc_SystemError,
+            "invalid node type (%d) for augmented assignment",
+            e->kind);
+        return 0;
+    }
+    return 1;
+}
+
+static int
 compiler_augassign(struct compiler *c, stmt_ty s)
 {
     expr_ty e = s->v.AugAssign.target;
     expr_ty auge;
 
     assert(s->kind == AugAssign_kind);
+    if (s->v.AugAssign.op == Coalesce) {
+        return compiler_augcoalesce(c, s);
+    }
 
     switch (e->kind) {
     case Attribute_kind:

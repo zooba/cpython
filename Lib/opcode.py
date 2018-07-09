@@ -160,6 +160,7 @@ name_op('LOAD_GLOBAL', 116)     # Index in name list
 
 jabs_op('JUMP_IF_NONE', 117)    # Target byte offset from beginning of code
 jabs_op('JUMP_IF_NOT_NONE_OR_POP', 118) # ""
+jabs_op('POP_JUMP_IF_NOT_NONE', 119)    # ""
 
 jrel_op('SETUP_FINALLY', 122)   # Distance to target address
 
