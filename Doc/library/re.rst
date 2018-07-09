@@ -468,13 +468,13 @@ Most of the standard escapes supported by Python string literals are also
 accepted by the regular expression parser::
 
    \a      \b      \f      \n
-   \r      \t      \u      \U
-   \v      \x      \\
+   \N      \r      \t      \u
+   \U      \v      \x      \\
 
 (Note that ``\b`` is used to represent word boundaries, and means "backspace"
 only inside character classes.)
 
-``'\u'`` and ``'\U'`` escape sequences are only recognized in Unicode
+``'\u'``, ``'\U'``, and ``'\N'`` escape sequences are only recognized in Unicode
 patterns.  In bytes patterns they are errors.
 
 Octal escapes are included in a limited form.  If the first digit is a 0, or if
@@ -488,6 +488,9 @@ three digits in length.
 .. versionchanged:: 3.6
    Unknown escapes consisting of ``'\'`` and an ASCII letter now are errors.
 
+.. versionchanged:: 3.8
+   The ``'\N{name}'`` escape sequence has been added. As in string literals,
+   it expands to the named Unicode character (e.g. ``'\N{EM DASH}'``).
 
 
 .. _contents-of-module-re:
@@ -1447,8 +1450,8 @@ Finding all Adverbs
 ^^^^^^^^^^^^^^^^^^^
 
 :func:`findall` matches *all* occurrences of a pattern, not just the first
-one as :func:`search` does.  For example, if one was a writer and wanted to
-find all of the adverbs in some text, he or she might use :func:`findall` in
+one as :func:`search` does.  For example, if a writer wanted to
+find all of the adverbs in some text, they might use :func:`findall` in
 the following manner::
 
    >>> text = "He was carefully disguised but captured quickly by police."
@@ -1462,8 +1465,8 @@ Finding all Adverbs and their Positions
 If one wants more information about all matches of a pattern than the matched
 text, :func:`finditer` is useful as it provides :ref:`match objects
 <match-objects>` instead of strings.  Continuing with the previous example, if
-one was a writer who wanted to find all of the adverbs *and their positions* in
-some text, he or she would use :func:`finditer` in the following manner::
+a writer wanted to find all of the adverbs *and their positions* in
+some text, they would use :func:`finditer` in the following manner::
 
    >>> text = "He was carefully disguised but captured quickly by police."
    >>> for m in re.finditer(r"\w+ly", text):

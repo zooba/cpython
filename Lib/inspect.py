@@ -110,7 +110,7 @@ def ismethoddescriptor(object):
 def isdatadescriptor(object):
     """Return true if the object is a data descriptor.
 
-    Data descriptors have both a __get__ and a __set__ attribute.  Examples are
+    Data descriptors have a __set__ or a __delete__ attribute.  Examples are
     properties (defined in Python) and getsets and members (defined in C).
     Typically, data descriptors will also have __name__ and __doc__ attributes
     (properties, getsets, and members have both of these attributes), but this
@@ -119,7 +119,7 @@ def isdatadescriptor(object):
         # mutual exclusion
         return False
     tp = type(object)
-    return hasattr(tp, "__set__") and hasattr(tp, "__get__")
+    return hasattr(tp, "__set__") or hasattr(tp, "__delete__")
 
 if hasattr(types, 'MemberDescriptorType'):
     # CPython and equivalent
@@ -993,7 +993,7 @@ def getclasstree(classes, unique=False):
     for c in classes:
         if c.__bases__:
             for parent in c.__bases__:
-                if not parent in children:
+                if parent not in children:
                     children[parent] = []
                 if c not in children[parent]:
                     children[parent].append(c)
@@ -1550,7 +1550,7 @@ def _shadowed_dict(klass):
         except KeyError:
             pass
         else:
-            if not (type(class_dict) is types.GetSetDescriptorType and
+            if not (isinstance(class_dict, types.GetSetDescriptorType) and
                     class_dict.__name__ == "__dict__" and
                     class_dict.__objclass__ is entry):
                 return class_dict
@@ -1572,7 +1572,7 @@ def getattr_static(obj, attr, default=_sentinel):
         klass = type(obj)
         dict_attr = _shadowed_dict(klass)
         if (dict_attr is _sentinel or
-            type(dict_attr) is types.MemberDescriptorType):
+            isinstance(dict_attr, types.MemberDescriptorType)):
             instance_result = _check_instance(obj, attr)
     else:
         klass = obj
@@ -1987,7 +1987,7 @@ def _signature_fromstr(cls, obj, s, skip_bound_arg=True):
 
     def parse_name(node):
         assert isinstance(node, ast.arg)
-        if node.annotation != None:
+        if node.annotation is not None:
             raise ValueError("Annotations are not currently supported")
         return node.arg
 
@@ -2407,6 +2407,9 @@ class _ParameterKind(enum.IntEnum):
     def __str__(self):
         return self._name_
 
+    @property
+    def description(self):
+        return _PARAM_NAME_MAPPING[self]
 
 _POSITIONAL_ONLY         = _ParameterKind.POSITIONAL_ONLY
 _POSITIONAL_OR_KEYWORD   = _ParameterKind.POSITIONAL_OR_KEYWORD
@@ -2421,8 +2424,6 @@ _PARAM_NAME_MAPPING = {
     _KEYWORD_ONLY: 'keyword-only',
     _VAR_KEYWORD: 'variadic keyword'
 }
-
-_get_paramkind_descr = _PARAM_NAME_MAPPING.__getitem__
 
 
 class Parameter:
@@ -2465,7 +2466,7 @@ class Parameter:
         if default is not _empty:
             if self._kind in (_VAR_POSITIONAL, _VAR_KEYWORD):
                 msg = '{} parameters cannot have default values'
-                msg = msg.format(_get_paramkind_descr(self._kind))
+                msg = msg.format(self._kind.description)
                 raise ValueError(msg)
         self._default = default
         self._annotation = annotation
@@ -2487,7 +2488,7 @@ class Parameter:
                     'implicit arguments must be passed as '
                     'positional or keyword arguments, not {}'
                 )
-                msg = msg.format(_get_paramkind_descr(self._kind))
+                msg = msg.format(self._kind.description)
                 raise ValueError(msg)
             self._kind = _POSITIONAL_ONLY
             name = 'implicit{}'.format(name[1:])
@@ -2763,8 +2764,8 @@ class Signature:
                             'wrong parameter order: {} parameter before {} '
                             'parameter'
                         )
-                        msg = msg.format(_get_paramkind_descr(top_kind),
-                                         _get_paramkind_descr(kind))
+                        msg = msg.format(top_kind.description,
+                                         kind.description)
                         raise ValueError(msg)
                     elif kind > top_kind:
                         kind_defaults = False

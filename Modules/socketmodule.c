@@ -2504,7 +2504,7 @@ sock_accept_impl(PySocketSockObject *s, void *data)
 /* s._accept() -> (fd, address) */
 
 static PyObject *
-sock_accept(PySocketSockObject *s)
+sock_accept(PySocketSockObject *s, PyObject *Py_UNUSED(ignored))
 {
     sock_addr_t addrbuf;
     SOCKET_T newfd;
@@ -2605,7 +2605,7 @@ setblocking(False) is equivalent to settimeout(0.0).");
    False if it is in non-blocking mode.
 */
 static PyObject *
-sock_getblocking(PySocketSockObject *s)
+sock_getblocking(PySocketSockObject *s, PyObject *Py_UNUSED(ignored))
 {
     if (s->sock_timeout) {
         Py_RETURN_TRUE;
@@ -2717,7 +2717,7 @@ Setting a timeout of zero is the same as setblocking(0).");
 /* s.gettimeout() method.
    Returns the timeout associated with a socket. */
 static PyObject *
-sock_gettimeout(PySocketSockObject *s)
+sock_gettimeout(PySocketSockObject *s, PyObject *Py_UNUSED(ignored))
 {
     if (s->sock_timeout < 0) {
         Py_RETURN_NONE;
@@ -2731,8 +2731,8 @@ sock_gettimeout(PySocketSockObject *s)
 PyDoc_STRVAR(gettimeout_doc,
 "gettimeout() -> timeout\n\
 \n\
-Returns the timeout in seconds (float) associated with socket \n\
-operations. A timeout of None indicates that timeouts on socket \n\
+Returns the timeout in seconds (float) associated with socket\n\
+operations. A timeout of None indicates that timeouts on socket\n\
 operations are disabled.");
 
 /* s.setsockopt() method.
@@ -2822,7 +2822,7 @@ setsockopt(level, option, value: buffer)\n\
 setsockopt(level, option, None, optlen: int)\n\
 \n\
 Set a socket option.  See the Unix manual for level and option.\n\
-The value argument can either be an integer, a string buffer, or \n\
+The value argument can either be an integer, a string buffer, or\n\
 None, optlen.");
 
 
@@ -2935,7 +2935,7 @@ sockets the address is a tuple (ifname, proto [,pkttype [,hatype]])");
    will surely fail. */
 
 static PyObject *
-sock_close(PySocketSockObject *s)
+sock_close(PySocketSockObject *s, PyObject *Py_UNUSED(ignored))
 {
     SOCKET_T fd;
     int res;
@@ -2966,7 +2966,7 @@ PyDoc_STRVAR(sock_close_doc,
 Close the socket.  It cannot be used after this call.");
 
 static PyObject *
-sock_detach(PySocketSockObject *s)
+sock_detach(PySocketSockObject *s, PyObject *Py_UNUSED(ignored))
 {
     SOCKET_T fd = s->sock_fd;
     s->sock_fd = INVALID_SOCKET;
@@ -3130,7 +3130,7 @@ instead of raising an exception when an error occurs.");
 /* s.fileno() method */
 
 static PyObject *
-sock_fileno(PySocketSockObject *s)
+sock_fileno(PySocketSockObject *s, PyObject *Py_UNUSED(ignored))
 {
     return PyLong_FromSocket_t(s->sock_fd);
 }
@@ -3144,7 +3144,7 @@ Return the integer file descriptor of the socket.");
 /* s.getsockname() method */
 
 static PyObject *
-sock_getsockname(PySocketSockObject *s)
+sock_getsockname(PySocketSockObject *s, PyObject *Py_UNUSED(ignored))
 {
     sock_addr_t addrbuf;
     int res;
@@ -3173,7 +3173,7 @@ info is a pair (hostaddr, port).");
 /* s.getpeername() method */
 
 static PyObject *
-sock_getpeername(PySocketSockObject *s)
+sock_getpeername(PySocketSockObject *s, PyObject *Py_UNUSED(ignored))
 {
     sock_addr_t addrbuf;
     int res;
@@ -3393,8 +3393,8 @@ sock_recv_into(PySocketSockObject *s, PyObject *args, PyObject *kwds)
 PyDoc_STRVAR(recv_into_doc,
 "recv_into(buffer, [nbytes[, flags]]) -> nbytes_read\n\
 \n\
-A version of recv() that stores its data into a buffer rather than creating \n\
-a new string.  Receive up to buffersize bytes from the socket.  If buffersize \n\
+A version of recv() that stores its data into a buffer rather than creating\n\
+a new string.  Receive up to buffersize bytes from the socket.  If buffersize\n\
 is not specified (or 0), receive up to the size available in the given buffer.\n\
 \n\
 See recv() for documentation about the flags.");
@@ -5277,9 +5277,6 @@ socket_gethostbyname(PyObject *self, PyObject *args)
 
     if (!PyArg_ParseTuple(args, "et:gethostbyname", "idna", &name))
         return NULL;
-    if (PySys_Audit("socket.gethostbyname", "O", args) < 0) {
-        goto finally;
-    }
     if (setipaddr(name, (struct sockaddr *)&addrbuf,  sizeof(addrbuf), AF_INET) < 0)
         goto finally;
     ret = make_ipv4_addr(&addrbuf);
@@ -5912,7 +5909,7 @@ Convert a 16-bit unsigned integer from network to host byte order.\n\
 Note that in case the received integer does not fit in 16-bit unsigned\n\
 integer, but does fit in a positive C int, it is silently truncated to\n\
 16-bit unsigned integer.\n\
-However, this silent truncation feature is deprecated, and will raise an \n\
+However, this silent truncation feature is deprecated, and will raise an\n\
 exception in future versions of Python.");
 
 
@@ -5983,7 +5980,7 @@ Convert a 16-bit unsigned integer from host to network byte order.\n\
 Note that in case the received integer does not fit in 16-bit unsigned\n\
 integer, but does fit in a positive C int, it is silently truncated to\n\
 16-bit unsigned integer.\n\
-However, this silent truncation feature is deprecated, and will raise an \n\
+However, this silent truncation feature is deprecated, and will raise an\n\
 exception in future versions of Python.");
 
 
@@ -6468,7 +6465,7 @@ Get host and port for a sockaddr.");
 /* Python API to getting and setting the default timeout value. */
 
 static PyObject *
-socket_getdefaulttimeout(PyObject *self)
+socket_getdefaulttimeout(PyObject *self, PyObject *Py_UNUSED(ignored))
 {
     if (defaulttimeout < 0) {
         Py_RETURN_NONE;
@@ -6717,7 +6714,7 @@ static PyMethodDef socket_methods[] = {
      METH_VARARGS | METH_KEYWORDS, getaddrinfo_doc},
     {"getnameinfo",             socket_getnameinfo,
      METH_VARARGS, getnameinfo_doc},
-    {"getdefaulttimeout",       (PyCFunction)socket_getdefaulttimeout,
+    {"getdefaulttimeout",       socket_getdefaulttimeout,
      METH_NOARGS, getdefaulttimeout_doc},
     {"setdefaulttimeout",       socket_setdefaulttimeout,
      METH_O, setdefaulttimeout_doc},

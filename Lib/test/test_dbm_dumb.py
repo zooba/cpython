@@ -82,14 +82,14 @@ class DumbDBMTestCase(unittest.TestCase):
         self.init_db()
         f = dumbdbm.open(_fname, 'r')
         self.read_helper(f)
-        with self.assertWarnsRegex(DeprecationWarning,
+        with self.assertRaisesRegex(ValueError,
                                    'The database is opened for reading only'):
             f[b'g'] = b'x'
-        with self.assertWarnsRegex(DeprecationWarning,
+        with self.assertRaisesRegex(ValueError,
                                    'The database is opened for reading only'):
             del f[b'a']
         # get() works as in the dict interface
-        self.assertEqual(f.get(b'b'), self._dict[b'b'])
+        self.assertEqual(f.get(b'a'), self._dict[b'a'])
         self.assertEqual(f.get(b'xxx', b'foo'), b'foo')
         self.assertIsNone(f.get(b'xxx'))
         with self.assertRaises(KeyError):
@@ -250,37 +250,30 @@ class DumbDBMTestCase(unittest.TestCase):
                     pass
             self.assertEqual(stdout.getvalue(), '')
 
-    def test_warn_on_ignored_flags(self):
+    def test_missing_data(self):
         for value in ('r', 'w'):
             _delete_files()
-            with self.assertWarnsRegex(DeprecationWarning,
-                                       "The database file is missing, the "
-                                       "semantics of the 'c' flag will "
-                                       "be used."):
-                f = dumbdbm.open(_fname, value)
-            f.close()
+            with self.assertRaises(FileNotFoundError):
+                dumbdbm.open(_fname, value)
+            self.assertFalse(os.path.exists(_fname + '.dir'))
+            self.assertFalse(os.path.exists(_fname + '.bak'))
 
     def test_missing_index(self):
         with dumbdbm.open(_fname, 'n') as f:
             pass
         os.unlink(_fname + '.dir')
         for value in ('r', 'w'):
-            with self.assertWarnsRegex(DeprecationWarning,
-                                       "The index file is missing, the "
-                                       "semantics of the 'c' flag will "
-                                       "be used."):
-                f = dumbdbm.open(_fname, value)
-            f.close()
-            self.assertEqual(os.path.exists(_fname + '.dir'), value == 'w')
+            with self.assertRaises(FileNotFoundError):
+                dumbdbm.open(_fname, value)
+            self.assertFalse(os.path.exists(_fname + '.dir'))
             self.assertFalse(os.path.exists(_fname + '.bak'))
 
     def test_invalid_flag(self):
         for flag in ('x', 'rf', None):
-            with self.assertWarnsRegex(DeprecationWarning,
-                                       "Flag must be one of "
-                                       "'r', 'w', 'c', or 'n'"):
-                f = dumbdbm.open(_fname, flag)
-            f.close()
+            with self.assertRaisesRegex(ValueError,
+                                        "Flag must be one of "
+                                        "'r', 'w', 'c', or 'n'"):
+                dumbdbm.open(_fname, flag)
 
     @unittest.skipUnless(hasattr(os, 'chmod'), 'test needs os.chmod()')
     def test_readonly_files(self):

@@ -1727,6 +1727,54 @@ exit:
 
 #endif /* defined(HAVE_EXECV) */
 
+#if defined(HAVE_POSIX_SPAWN)
+
+PyDoc_STRVAR(os_posix_spawn__doc__,
+"posix_spawn($module, path, argv, env, file_actions=None, /)\n"
+"--\n"
+"\n"
+"Execute the program specified by path in a new process.\n"
+"\n"
+"  path\n"
+"    Path of executable file.\n"
+"  argv\n"
+"    Tuple or list of strings.\n"
+"  env\n"
+"    Dictionary of strings mapping to strings.\n"
+"  file_actions\n"
+"    A sequence of file action tuples.");
+
+#define OS_POSIX_SPAWN_METHODDEF    \
+    {"posix_spawn", (PyCFunction)os_posix_spawn, METH_FASTCALL, os_posix_spawn__doc__},
+
+static PyObject *
+os_posix_spawn_impl(PyObject *module, path_t *path, PyObject *argv,
+                    PyObject *env, PyObject *file_actions);
+
+static PyObject *
+os_posix_spawn(PyObject *module, PyObject *const *args, Py_ssize_t nargs)
+{
+    PyObject *return_value = NULL;
+    path_t path = PATH_T_INITIALIZE("posix_spawn", "path", 0, 0);
+    PyObject *argv;
+    PyObject *env;
+    PyObject *file_actions = Py_None;
+
+    if (!_PyArg_ParseStack(args, nargs, "O&OO|O:posix_spawn",
+        path_converter, &path, &argv, &env, &file_actions)) {
+        goto exit;
+    }
+    return_value = os_posix_spawn_impl(module, &path, argv, env, file_actions);
+
+exit:
+    /* Cleanup for path */
+    path_cleanup(&path);
+
+    return return_value;
+}
+
+#endif /* defined(HAVE_POSIX_SPAWN) */
+
 #if (defined(HAVE_SPAWNV) || defined(HAVE_WSPAWNV))
 
 PyDoc_STRVAR(os_spawnv__doc__,
@@ -3804,6 +3852,40 @@ exit:
 
     return return_value;
 }
+
+#if defined(__APPLE__)
+
+PyDoc_STRVAR(os__fcopyfile__doc__,
+"_fcopyfile($module, infd, outfd, flags, /)\n"
+"--\n"
+"\n"
+"Efficiently copy content or metadata of 2 regular file descriptors (macOS).");
+
+#define OS__FCOPYFILE_METHODDEF    \
+    {"_fcopyfile", (PyCFunction)os__fcopyfile, METH_FASTCALL, os__fcopyfile__doc__},
+
+static PyObject *
+os__fcopyfile_impl(PyObject *module, int infd, int outfd, int flags);
+
+static PyObject *
+os__fcopyfile(PyObject *module, PyObject *const *args, Py_ssize_t nargs)
+{
+    PyObject *return_value = NULL;
+    int infd;
+    int outfd;
+    int flags;
+
+    if (!_PyArg_ParseStack(args, nargs, "iii:_fcopyfile",
+        &infd, &outfd, &flags)) {
+        goto exit;
+    }
+    return_value = os__fcopyfile_impl(module, infd, outfd, flags);
+
+exit:
+    return return_value;
+}
+
+#endif /* defined(__APPLE__) */
 
 PyDoc_STRVAR(os_fstat__doc__,
 "fstat($module, /, fd)\n"
@@ -6362,6 +6444,10 @@ exit:
     #define OS_PREADV_METHODDEF
 #endif /* !defined(OS_PREADV_METHODDEF) */
 
+#ifndef OS__FCOPYFILE_METHODDEF
+    #define OS__FCOPYFILE_METHODDEF
+#endif /* !defined(OS__FCOPYFILE_METHODDEF) */
+
 #ifndef OS_PIPE_METHODDEF
     #define OS_PIPE_METHODDEF
 #endif /* !defined(OS_PIPE_METHODDEF) */
@@ -6537,4 +6623,4 @@ exit:
 #ifndef OS_GETRANDOM_METHODDEF
     #define OS_GETRANDOM_METHODDEF
 #endif /* !defined(OS_GETRANDOM_METHODDEF) */
-/*[clinic end generated code: output=c966c821d557b7c0 input=a9049054013a1b77]*/
+/*[clinic end generated code: output=47fb6a3e88cba6d9 input=a9049054013a1b77]*/
