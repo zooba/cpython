@@ -9,7 +9,7 @@ jobs:
     vmImage: xcode9-macos10.13
 
   steps:
-  - template: ./posix-steps.yml
+  - template: ./macos-steps.yml
 
 
 - job: Ubuntu_PR_Tests
@@ -24,9 +24,7 @@ jobs:
   steps:
   - template: ./posix-steps.yml
     parameters:
-      installDependencies: true
       openssl: 1.1.0g
-      xvfbCommand: xvfb-run
 
 
 - job: Windows_PR_Tests

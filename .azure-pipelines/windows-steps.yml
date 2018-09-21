@@ -32,7 +32,7 @@ steps:
 - script: PCbuild\rt.bat -q -uall -u-cpu -rwW --slowest --timeout=1200 -j0 --junit-xml="$(Build.BinariesDirectory)\test-results.xml"
   displayName: 'Tests'
   env:
-    PREFIX: $(Py_OutDir)\$(outDirSuffix)
+    PREFIX: $(Py_OutDir)\$(arch)
   condition: and(succeeded(), ne(variables['DocOnly'], 'true'))
 
 - task: PublishTestResults@2
@@ -40,6 +40,6 @@ steps:
   inputs:
     testResultsFiles: '$(Build.BinariesDirectory)\test-results.xml'
     mergeTestResults: true
-    testRunTitle: '$(System.PullRequest.TargetBranch)-$(os)'
-    platform: $(os)
+    testRunTitle: '$(System.PullRequest.TargetBranch)-$(platformName)'
+    platform: $(platformName)-$(arch)
   condition: and(succeededOrFailed(), ne(variables['DocOnly'], 'true'))

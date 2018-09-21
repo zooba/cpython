@@ -1,6 +1,3 @@
-parameters:
-  openssl:
-
 steps:
 - checkout: self
   clean: true
@@ -17,25 +14,6 @@ steps:
   displayName: Detect doc-only changes
   condition: and(succeeded(), variables['system.pullRequest.targetBranch'])
 
-- script: ./python Tools/scripts/patchcheck.py --travis true
-  displayName: 'Run patchcheck.py'
-  condition: and(succeeded(), ne(variables['DocOnly'], 'true'))
-
-- script: ./.vsts/install_deps.sh
-  displayName: 'Install dependencies'
-  condition: and(succeeded(), ne(variables['DocOnly'], 'true'))
-
-- script: |
-    echo ##vso[task.prependpath]$(build.sourcesDirectory)/multissl/openssl/${{ parameters.openssl }}
-    echo ##vso[task.setvariable variable=OPENSSL_DIR]$(build.sourcesDirectory)/multissl/openssl/${{ parameters.openssl }}
-  displayName: 'Add OpenSSL directory to PATH'
-  condition: and(succeeded(), ne(variables['DocOnly'], 'true'))
-
-- script: python3 Tools/ssl/multissltests.py --steps=library --base-directory $(build.sourcesDirectory)/multissl --openssl ${{ parameters.openssl }} --system Linux
-  displayName: 'python multissltests.py'
-  condition: and(succeeded(), ne(variables['DocOnly'], 'true'))
-
-
 - script: ./configure --with-pydebug
   displayName: 'Configure CPython (debug)'
   condition: and(succeeded(), ne(variables['DocOnly'], 'true'))
@@ -48,7 +26,7 @@ steps:
   displayName: 'Display build info'
   condition: and(succeeded(), ne(variables['DocOnly'], 'true'))
 
-- script: xvfb-run make buildbottest TESTOPTS="-j4 -uall,-cpu --junit-xml=$(build.binariesDirectory)/test-results.xml"
+- script: make buildbottest TESTOPTS="-j4 -uall,-cpu --junit-xml=$(build.binariesDirectory)/test-results.xml"
   displayName: 'Tests'
   condition: and(succeeded(), ne(variables['DocOnly'], 'true'))
 
