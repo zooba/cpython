@@ -1,0 +1,66 @@
+jobs:
+- job: PR-Patchcheck
+  displayName: PR Patchcheck
+
+  pool:
+    vmImage: ubuntu-16.04
+
+  steps:
+  # Run patchcheck and fail if anything is discovered
+  - script: ./python Tools/scripts/patchcheck.py --travis true
+    displayName: 'Run patchcheck.py'
+
+
+- job: macOS-PR-Tests
+  displayName: macOS PR Tests
+  dependsOn: PR-Patchcheck
+
+  variables:
+    platformName: macos
+
+  pool:
+    vmImage: xcode9-macos10.13
+
+  steps:
+  - template: ./posix-steps.yml
+
+
+- job: Ubuntu-PR-Tests
+  displayName: Ubuntu PR Tests
+  dependsOn: PR-Patchcheck
+
+  pool:
+    vmImage: ubuntu-16.04
+
+  variables:
+    platformName: linux
+
+  steps:
+  - template: ./posix-steps.yml
+    parameters:
+      installDependencies: true
+      openssl: 1.1.0g
+      xvfbCommand: xvfb-run
+
+
+- job: Windows-PR-Tests
+  displayName: Windows PR Tests
+  dependsOn: PR-Patchcheck
+
+  pool:
+    vmImage: vs2017-win2017
+
+  strategy:
+    matrix:
+      win32:
+        arch: win32
+        buildOpt:
+        platformName: win32
+      win64:
+        arch: amd64
+        buildOpt: '-p x64'
+        platformName: win64
+    maxParallel: 2
+
+  steps:
+  - template: ./windows-steps.yml
