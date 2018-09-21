@@ -1,13 +1,3 @@
-# Current docs for the syntax of this file are at:
-#  https://github.com/Microsoft/vsts-agent/blob/master/docs/preview/yamlgettingstarted.md
-
-variables:
-  # Relocate build outputs outside of source directory to make cleaning faster
-  Py_IntDir: $(Build.BinariesDirectory)\obj
-  # UNDONE: Do not build to a different directory because of broken tests
-  Py_OutDir: $(Build.SourcesDirectory)\PCbuild
-  EXTERNAL_DIR: $(Build.BinariesDirectory)\externals
-
 steps:
 - checkout: self
   clean: true
