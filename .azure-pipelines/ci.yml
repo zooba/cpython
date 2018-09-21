@@ -37,20 +37,35 @@ jobs:
   - template: ./posix-steps.yml
 
 
-- job: Ubuntu_Coverage_CI_Tests
-  displayName: Ubuntu CI Tests (coverage)
+- job: ManyLinux1_CI_Tests
+  displayName: ManyLinux1 CI Tests
 
   pool:
     vmImage: ubuntu-16.04
 
   variables:
-    platformName: linux
-    openssl_version: 1.1.0g
+    platformName: manylinux1
 
   steps:
-  - template: ./posix-steps.yml
+  - template: ./docker-steps.yml
     parameters:
-      coverage: true
+      imageName: 'dockcross/manylinux-x64'
+
+
+#- job: Ubuntu_Coverage_CI_Tests
+#  displayName: Ubuntu CI Tests (coverage)
+#
+#  pool:
+#    vmImage: ubuntu-16.04
+#
+#  variables:
+#    platformName: linux
+#    openssl_version: 1.1.0g
+#
+#  steps:
+#  - template: ./posix-steps.yml
+#    parameters:
+#      coverage: true
 
 
 - job: Windows_CI_Tests

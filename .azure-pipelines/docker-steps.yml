@@ -1,0 +1,63 @@
+parameters:
+  imageName:
+
+steps:
+- checkout: self
+  clean: true
+  fetchDepth: 5
+
+- task: docker@0
+  displayName: 'Configure CPython (debug)'
+  inputs:
+    action: 'Run an image'
+    imageName: ${{ parameters.imageName }}
+    volumes: |
+      $(build.sourcesDirectory):/src
+      $(build.binariesDirectory):/build
+    envVars: ${{ parameters.environmentVariables }}
+    workDir: '/src'
+    containerCommand: './configure --with-pydebug'
+    detached: false
+- task: docker@0
+  displayName: 'Build CPython'
+  inputs:
+    action: 'Run an image'
+    imageName: ${{ parameters.imageName }}
+    volumes: |
+      $(build.sourcesDirectory):/src
+      $(build.binariesDirectory):/build
+    workDir: '/src'
+    containerCommand: 'make -s -j4'
+    detached: false
+
+- task: docker@0
+  displayName: 'Display build info'
+  inputs:
+    action: 'Run an image'
+    imageName: ${{ parameters.imageName }}
+    volumes: |
+      $(build.sourcesDirectory):/src
+      $(build.binariesDirectory):/build
+    workDir: '/src'
+    containerCommand: 'make pythoninfo'
+    detached: false
+
+- task: docker@0
+  displayName: 'Tests'
+  inputs:
+    action: 'Run an image'
+    imageName: ${{ parameters.imageName }}
+    volumes: |
+      $(build.sourcesDirectory):/src
+      $(build.binariesDirectory):/build
+    workDir: '/src'
+    containerCommand: 'make buildbottest TESTOPTS="-j4 -uall,-cpu --junit-xml=/build/test-results.xml"'
+    detached: false
+
+- task: PublishTestResults@2
+  displayName: 'Publish Test Results'
+  inputs:
+    testResultsFiles: '$(build.binariesDirectory)/test-results.xml'
+    mergeTestResults: true
+    platform: $(platformName)
+  condition: succeededOrFailed()
