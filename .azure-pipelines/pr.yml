@@ -6,7 +6,7 @@ jobs:
     vmImage: ubuntu-16.04
 
   steps:
-  - UsePythonVersion@0
+  - task: UsePythonVersion@0
     displayName: Use Python 3.7
     inputs:
       versionSpec: 3.7
