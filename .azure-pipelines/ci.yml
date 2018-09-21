@@ -7,10 +7,11 @@ jobs:
 
   steps:
   - template: ./docs-steps.yml
+    parameters:
+      upload: true
 
-
-- job: macOS_PR_Tests
-  displayName: macOS PR Tests
+- job: macOS_CI_Tests
+  displayName: macOS CI Tests
 
   variables:
     platformName: macos
@@ -22,8 +23,8 @@ jobs:
   - template: ./macos-steps.yml
 
 
-- job: Ubuntu_PR_Tests
-  displayName: Ubuntu PR Tests
+- job: Ubuntu_CI_Tests
+  displayName: Ubuntu CI Tests
 
   pool:
     vmImage: ubuntu-16.04
@@ -36,8 +37,24 @@ jobs:
   - template: ./posix-steps.yml
 
 
-- job: Windows_PR_Tests
-  displayName: Windows PR Tests
+- job: Ubuntu_Coverage_CI_Tests
+  displayName: Ubuntu CI Tests (coverage)
+
+  pool:
+    vmImage: ubuntu-16.04
+
+  variables:
+    platformName: linux
+    openssl_version: 1.1.0g
+
+  steps:
+  - template: ./posix-steps.yml
+    parameters:
+      coverage: true
+
+
+- job: Windows_CI_Tests
+  displayName: Windows CI Tests
 
   pool:
     vmImage: vs2017-win2017
