@@ -19,7 +19,7 @@ steps:
 
 - script: ./python Tools/scripts/patchcheck.py --travis true
   displayName: 'Run patchcheck.py'
-  condition: and(succeeded(), ne(variables['DocOnly'], 'true'))
+  condition: and(and(succeeded(), ne(variables['DocOnly'], 'true')), variables['system.pullRequest.targetBranch'])
 
 - script: ./.vsts/install_deps.sh
   displayName: 'Install dependencies'
