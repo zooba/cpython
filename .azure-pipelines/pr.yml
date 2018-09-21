@@ -6,8 +6,13 @@ jobs:
     vmImage: ubuntu-16.04
 
   steps:
+  - UsePythonVersion@0
+    displayName: Use Python 3.7
+    inputs:
+      versionSpec: 3.7
+      architecture: x64
   # Run patchcheck and fail if anything is discovered
-  - script: ./python Tools/scripts/patchcheck.py --travis true
+  - script: python Tools/scripts/patchcheck.py --travis true
     displayName: 'Run patchcheck.py'
 
 
