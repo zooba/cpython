@@ -22,12 +22,12 @@ steps:
   displayName: Detect doc-only changes
   condition: and(succeeded(), variables['system.pullRequest.targetBranch'])
 
-- ${{ if parameters.installDependencies }}
+- ${{ if parameters.installDependencies }}:
   - script: ./.vsts/install_deps.sh
     displayName: 'Install dependencies'
     condition: and(succeeded(), ne(variables['DocOnly'], 'true'))
 
-- ${{ if ne(parameters.openssl, '') }}
+- ${{ if ne(parameters.openssl, '') }}:
   - script: |
       echo ##vso[task.prependpath]$(build.sourcesDirectory)/multissl/openssl/${{ parameters.openssl }}
       echo ##vso[task.setvariable variable=OPENSSL_DIR]$(build.sourcesDirectory)/multissl/openssl/${{ parameters.openssl }}
