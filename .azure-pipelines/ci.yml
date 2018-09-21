@@ -45,11 +45,10 @@ jobs:
 
   variables:
     platformName: manylinux1
+    imageName: 'dockcross/manylinux-x64'
 
   steps:
   - template: ./docker-steps.yml
-    parameters:
-      imageName: 'dockcross/manylinux-x64'
 
 
 #- job: Ubuntu_Coverage_CI_Tests

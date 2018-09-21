@@ -1,6 +1,3 @@
-parameters:
-  imageName:
-
 steps:
 - checkout: self
   clean: true
@@ -10,11 +7,10 @@ steps:
   displayName: 'Configure CPython (debug)'
   inputs:
     action: 'Run an image'
-    imageName: ${{ parameters.imageName }}
+    imageName: $(imageName)
     volumes: |
       $(build.sourcesDirectory):/src
       $(build.binariesDirectory):/build
-    envVars: ${{ parameters.environmentVariables }}
     workDir: '/src'
     containerCommand: './configure --with-pydebug'
     detached: false
@@ -22,7 +18,7 @@ steps:
   displayName: 'Build CPython'
   inputs:
     action: 'Run an image'
-    imageName: ${{ parameters.imageName }}
+    imageName: $(imageName)
     volumes: |
       $(build.sourcesDirectory):/src
       $(build.binariesDirectory):/build
@@ -34,7 +30,7 @@ steps:
   displayName: 'Display build info'
   inputs:
     action: 'Run an image'
-    imageName: ${{ parameters.imageName }}
+    imageName: $(imageName)
     volumes: |
       $(build.sourcesDirectory):/src
       $(build.binariesDirectory):/build
@@ -46,7 +42,7 @@ steps:
   displayName: 'Tests'
   inputs:
     action: 'Run an image'
-    imageName: ${{ parameters.imageName }}
+    imageName: $(imageName)
     volumes: |
       $(build.sourcesDirectory):/src
       $(build.binariesDirectory):/build
