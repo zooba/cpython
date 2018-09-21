@@ -22,6 +22,10 @@ steps:
   displayName: Detect doc-only changes
   condition: and(succeeded(), variables['system.pullRequest.targetBranch'])
 
+- script: ./python Tools/scripts/patchcheck.py --travis true
+  displayName: 'Run patchcheck.py'
+  condition: and(succeeded(), ne(variables['DocOnly'], 'true'))
+
 - ${{ if parameters.installDependencies }}:
   - script: ./.vsts/install_deps.sh
     displayName: 'Install dependencies'

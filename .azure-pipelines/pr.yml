@@ -1,24 +1,6 @@
 jobs:
-- job: PR_Patchcheck
-  displayName: PR Patchcheck
-
-  pool:
-    vmImage: ubuntu-16.04
-
-  steps:
-  - task: UsePythonVersion@0
-    displayName: Use Python 3.7
-    inputs:
-      versionSpec: 3.7
-      architecture: x64
-  # Run patchcheck and fail if anything is discovered
-  - script: python Tools/scripts/patchcheck.py --travis true
-    displayName: 'Run patchcheck.py'
-
-
 - job: macOS_PR_Tests
   displayName: macOS PR Tests
-  dependsOn: PR_Patchcheck
 
   variables:
     platformName: macos
@@ -32,7 +14,6 @@ jobs:
 
 - job: Ubuntu_PR_Tests
   displayName: Ubuntu PR Tests
-  dependsOn: PR_Patchcheck
 
   pool:
     vmImage: ubuntu-16.04
@@ -50,7 +31,6 @@ jobs:
 
 - job: Windows_PR_Tests
   displayName: Windows PR Tests
-  dependsOn: PR_Patchcheck
 
   pool:
     vmImage: vs2017-win2017
