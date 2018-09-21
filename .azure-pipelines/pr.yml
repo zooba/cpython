@@ -20,11 +20,10 @@ jobs:
 
   variables:
     platformName: linux
+    openssl_version: 1.1.0g
 
   steps:
   - template: ./posix-steps.yml
-    parameters:
-      openssl: 1.1.0g
 
 
 - job: Windows_PR_Tests
