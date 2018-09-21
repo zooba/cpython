@@ -17,3 +17,7 @@ sudo apt-get -yq install \
     libffi-dev \
     uuid-dev \
     xvfb
+
+echo ##vso[task.prependpath]$PWD/multissl/openssl/$1
+echo ##vso[task.setvariable variable=OPENSSL_DIR]$PWD/multissl/openssl/$1
+python3 Tools/ssl/multissltests.py --steps=library --base-directory $PWD/multissl --openssl $1 --system Linux

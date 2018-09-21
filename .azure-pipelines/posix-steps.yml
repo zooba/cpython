@@ -21,20 +21,9 @@ steps:
   displayName: 'Run patchcheck.py'
   condition: and(and(succeeded(), ne(variables['DocOnly'], 'true')), variables['system.pullRequest.targetBranch'])
 
-- script: ./.vsts/install_deps.sh
+- script: ./.azure-pipelines/posix-deps.sh ${{ parameters.openssl }}
   displayName: 'Install dependencies'
   condition: and(succeeded(), ne(variables['DocOnly'], 'true'))
-
-- script: |
-    echo ##vso[task.prependpath]$(build.sourcesDirectory)/multissl/openssl/${{ parameters.openssl }}
-    echo ##vso[task.setvariable variable=OPENSSL_DIR]$(build.sourcesDirectory)/multissl/openssl/${{ parameters.openssl }}
-  displayName: 'Add OpenSSL directory to PATH'
-  condition: and(succeeded(), ne(variables['DocOnly'], 'true'))
-
-- script: python3 Tools/ssl/multissltests.py --steps=library --base-directory $(build.sourcesDirectory)/multissl --openssl ${{ parameters.openssl }} --system Linux
-  displayName: 'python multissltests.py'
-  condition: and(succeeded(), ne(variables['DocOnly'], 'true'))
-
 
 - script: ./configure --with-pydebug
   displayName: 'Configure CPython (debug)'
