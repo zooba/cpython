@@ -13,13 +13,16 @@ jobs:
   displayName: macOS PR Tests
 
   variables:
-    platformName: macos
+    testRunTitle: '$(system.pullRequest.TargetBranch)-macos'
+    testRunPlatform: macos
 
   pool:
     vmImage: xcode9-macos10.13
 
   steps:
   - template: ./macos-steps.yml
+    parameters:
+      targetBranch: $(System.PullRequest.TargetBranch)
 
 
 - job: Ubuntu_PR_Tests
@@ -29,11 +32,14 @@ jobs:
     vmImage: ubuntu-16.04
 
   variables:
-    platformName: linux
+    testRunTitle: '$(system.pullRequest.TargetBranch)-linux'
+    testRunPlatform: linux
     openssl_version: 1.1.0g
 
   steps:
   - template: ./posix-steps.yml
+    parameters:
+      targetBranch: $(System.PullRequest.TargetBranch)
 
 
 - job: Windows_PR_Tests
@@ -47,12 +53,16 @@ jobs:
       win32:
         arch: win32
         buildOpt:
-        platformName: win32
+        testRunTitle: '$(System.PullRequest.TargetBranch)-win32'
+        testRunPlatform: win32
       win64:
         arch: amd64
         buildOpt: '-p x64'
-        platformName: win64
+        testRunTitle: '$(System.PullRequest.TargetBranch)-win64'
+        testRunPlatform: win64
     maxParallel: 2
 
   steps:
   - template: ./windows-steps.yml
+    parameters:
+      targetBranch: $(System.PullRequest.TargetBranch)

@@ -3,14 +3,14 @@ steps:
   clean: true
   fetchDepth: 5
 
-- powershell: |
-    git fetch -q origin $(System.PullRequest.TargetBranch)
-    if (-not (git diff --name-only HEAD (git merge-base HEAD FETCH_HEAD) | sls -NotMatch '(\.rst$)|(^Doc)|(^Misc)')) {
-      Write-Host 'Only docs were updated. Skipping build'
-      Write-Host '##vso[task.setvariable variable=DocOnly]true'
-    }
-  displayName: Detect doc-only changes
-  condition: and(succeeded(), variables['System.PullRequest.TargetBranch'])
+- ${{ if ne(parameters.targetBranch, '') }}:
+  - powershell: |
+      git fetch -q origin ${{ parameters.targetbranch }}
+      if (-not (git diff --name-only HEAD (git merge-base HEAD FETCH_HEAD) | sls -NotMatch '(\.rst$)|(^Doc)|(^Misc)')) {
+        Write-Host 'Only docs were updated. Skipping build'
+        Write-Host '##vso[task.setvariable variable=DocOnly]true'
+      }
+    displayName: Detect doc-only changes
 
 - powershell: |
     # Relocate build outputs outside of source directory to make cleaning faster
@@ -40,6 +40,6 @@ steps:
   inputs:
     testResultsFiles: '$(Build.BinariesDirectory)\test-results.xml'
     mergeTestResults: true
-    testRunTitle: '$(System.PullRequest.TargetBranch)-$(platformName)'
-    platform: $(platformName)-$(arch)
+    testRunTitle: $(testRunTitle)
+    platform: $(testRunPlatform)
   condition: and(succeededOrFailed(), ne(variables['DocOnly'], 'true'))

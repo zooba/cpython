@@ -14,7 +14,8 @@ jobs:
   displayName: macOS CI Tests
 
   variables:
-    platformName: macos
+    testRunTitle: '$(build.sourceBranchName)-macos'
+    testRunPlatform: macos
 
   pool:
     vmImage: xcode9-macos10.13
@@ -30,7 +31,8 @@ jobs:
     vmImage: ubuntu-16.04
 
   variables:
-    platformName: linux
+    testRunTitle: '$(build.sourceBranchName)-linux'
+    testRunPlatform: linux
     openssl_version: 1.1.0g
 
   steps:
@@ -44,7 +46,8 @@ jobs:
     vmImage: ubuntu-16.04
 
   variables:
-    platformName: manylinux1
+    testRunTitle: '$(build.sourceBranchName)-manylinux1'
+    testRunPlatform: manylinux1
     imageName: 'dockcross/manylinux-x64'
 
   steps:
@@ -58,7 +61,8 @@ jobs:
 #    vmImage: ubuntu-16.04
 #
 #  variables:
-#    platformName: linux
+#    testRunTitle: '$(Build.SourceBranchName)-linux-coverage'
+#    testRunPlatform: linux-coverage
 #    openssl_version: 1.1.0g
 #
 #  steps:
@@ -78,11 +82,13 @@ jobs:
       win32:
         arch: win32
         buildOpt:
-        platformName: win32
+        testRunTitle: '$(Build.SourceBranchName)-win32'
+        testRunPlatform: win32
       win64:
         arch: amd64
         buildOpt: '-p x64'
-        platformName: win64
+        testRunTitle: '$(Build.SourceBranchName)-win64'
+        testRunPlatform: win64
     maxParallel: 2
 
   steps:
