@@ -25,5 +25,11 @@ steps:
      echo "##vso[task.setvariable variable=BuildDocs,isOutput=true]true"
    fi
    echo "##vso[task.setvariable variable=DocOnly,isOutput=true]true"
-  displayName: Detect doc changes
+  displayName: Detect documentation changes
   condition: and(succeeded(), variables['System.PullRequest.TargetBranch'])
+
+- script: |
+   echo "##vso[task.setvariable variable=RunTests,isOutput=true]true"
+   echo "##vso[task.setvariable variable=DocOnly,isOutput=true]true"
+   displayName: Set default values
+   condition: and(succeeded(), not(variables['System.PullRequest.TargetBranch']))
