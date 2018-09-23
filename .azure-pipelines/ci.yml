@@ -1,3 +1,7 @@
+variables:
+  manylinux: false
+  coverage: false
+
 jobs:
 - job: Docs_PR
   displayName: Docs PR
@@ -9,6 +13,7 @@ jobs:
   - template: ./docs-steps.yml
     parameters:
       upload: true
+
 
 - job: macOS_CI_Tests
   displayName: macOS CI Tests
@@ -53,22 +58,26 @@ jobs:
   steps:
   - template: ./docker-steps.yml
 
+  condition: eq(variables['manylinux'], 'true')
 
-#- job: Ubuntu_Coverage_CI_Tests
-#  displayName: Ubuntu CI Tests (coverage)
-#
-#  pool:
-#    vmImage: ubuntu-16.04
-#
-#  variables:
-#    testRunTitle: '$(Build.SourceBranchName)-linux-coverage'
-#    testRunPlatform: linux-coverage
-#    openssl_version: 1.1.0g
-#
-#  steps:
-#  - template: ./posix-steps.yml
-#    parameters:
-#      coverage: true
+
+- job: Ubuntu_Coverage_CI_Tests
+  displayName: Ubuntu CI Tests (coverage)
+
+  pool:
+    vmImage: ubuntu-16.04
+
+  variables:
+    testRunTitle: '$(Build.SourceBranchName)-linux-coverage'
+    testRunPlatform: linux-coverage
+    openssl_version: 1.1.0g
+
+  steps:
+  - template: ./posix-steps.yml
+    parameters:
+      coverage: true
+
+  condition: eq(variables['manylinux'], 'true')
 
 
 - job: Windows_CI_Tests
