@@ -12,7 +12,11 @@ jobs:
 - job: Docs_PR
   displayName: Docs PR
   dependsOn: Prebuild
-  condition: and(succeeded(), eq(dependencies.Prebuild.outputs['docs.run'], 'true'))
+
+  variables:
+    run: $[ dependencies.Prebuild.outputs['docs.run'] ]
+
+  condition: and(succeeded(), eq(variables['run'], 'true'))
 
   pool:
     vmImage: ubuntu-16.04
