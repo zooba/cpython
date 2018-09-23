@@ -12,7 +12,7 @@ jobs:
 - job: Docs_PR
   displayName: Docs PR
   dependsOn: Prebuild
-  condition: and(succeeded(), eq(dependencies.Prebuild.outputs['BuildDocs'], 'true'))
+  condition: and(succeeded(), eq(dependencies.Prebuild.outputs['docs.run'], 'true'))
 
   pool:
     vmImage: ubuntu-16.04
@@ -24,7 +24,7 @@ jobs:
 - job: macOS_PR_Tests
   displayName: macOS PR Tests
   dependsOn: Prebuild
-  condition: and(succeeded(), eq(dependencies.Prebuild.outputs['RunTests'], 'true'))
+  condition: and(succeeded(), eq(dependencies.Prebuild.outputs['tests.run'], 'true'))
 
   variables:
     testRunTitle: '$(system.pullRequest.TargetBranch)-macos'
@@ -42,7 +42,7 @@ jobs:
 - job: Ubuntu_PR_Tests
   displayName: Ubuntu PR Tests
   dependsOn: Prebuild
-  condition: and(succeeded(), eq(dependencies.Prebuild.outputs['RunTests'], 'true'))
+  condition: and(succeeded(), eq(dependencies.Prebuild.outputs['tests.run'], 'true'))
 
   pool:
     vmImage: ubuntu-16.04
@@ -61,7 +61,7 @@ jobs:
 - job: Windows_PR_Tests
   displayName: Windows PR Tests
   dependsOn: Prebuild
-  condition: and(succeeded(), eq(dependencies.Prebuild.outputs['RunTests'], 'true'))
+  condition: and(succeeded(), eq(dependencies.Prebuild.outputs['tests.run'], 'true'))
 
   pool:
     vmImage: vs2017-win2017
