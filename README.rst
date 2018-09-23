@@ -36,7 +36,7 @@ reserved.
 
 See the end of this file for further copyright and license information.
 
-Oh look, here's an unrelated change that should trigger a docs build.
+Oh look, here's an unrelated change that should trigger a docs build. It did! And this one should trigger the PR.
 
 .. contents::
 
