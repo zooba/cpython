@@ -4,13 +4,13 @@ variables:
 
 jobs:
 - job: Prebuild
-  displayName: Detect doc-only changes
+  displayName: Pre-build checks
 
   pool:
     vmImage: ubuntu-16.04
 
   steps:
-  - template: ./detect-docs.yml
+  - template: ./prebuild-checks.yml
 
 
 - job: Docs_PR
