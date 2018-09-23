@@ -1,6 +1,3 @@
-variables:
-  diffTarget: HEAD~1
-
 steps:
 - checkout: self
   fetchDepth: 5
@@ -8,6 +5,9 @@ steps:
 - script: ./python Tools/scripts/patchcheck.py --travis true
   displayName: 'Run patchcheck.py'
   condition: and(succeeded(), eq(variables['Build.Reason'], 'PullRequest'))
+
+- script: echo "##vso[task.setvariable variable=diffTarget]HEAD~1"
+  displayName: Set default diff target
 
 - script: |
     git fetch -q origin $(System.PullRequest.TargetBranch)
