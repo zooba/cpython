@@ -436,7 +436,13 @@ class CompressObjectTestCase(BaseCompressTestCase, unittest.TestCase):
         # Test flush() with the various options, using all the
         # different levels in order to provide more variations.
         sync_opt = ['Z_NO_FLUSH', 'Z_SYNC_FLUSH', 'Z_FULL_FLUSH',
-                    'Z_PARTIAL_FLUSH', 'Z_BLOCK']
+                    'Z_PARTIAL_FLUSH']
+
+        ver = [int(v) for v in zlib.ZLIB_RUNTIME_VERSION.split('.')]
+        # Z_BLOCK has a known failure prior to 1.2.5.3
+        if ver >= (1, 2, 5, 3):
+            sync_opt.append('Z_BLOCK')
+
         sync_opt = [getattr(zlib, opt) for opt in sync_opt
                     if hasattr(zlib, opt)]
         data = HAMLET_SCENE * 8
