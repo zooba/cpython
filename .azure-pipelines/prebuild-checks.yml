@@ -2,7 +2,7 @@ steps:
 - checkout: self
   fetchDepth: 5
 
-- script: ./python Tools/scripts/patchcheck.py --travis true
+- script: python3 Tools/scripts/patchcheck.py --travis true
   displayName: 'Run patchcheck.py'
   condition: and(succeeded(), eq(variables['Build.Reason'], 'PullRequest'))
 
