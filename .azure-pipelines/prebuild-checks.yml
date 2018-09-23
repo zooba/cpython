@@ -31,5 +31,5 @@ steps:
 - script: |
    echo "##vso[task.setvariable variable=RunTests,isOutput=true]true"
    echo "##vso[task.setvariable variable=DocOnly,isOutput=true]true"
-   displayName: Set default values
-   condition: and(succeeded(), not(variables['System.PullRequest.TargetBranch']))
+  displayName: Set default values
+  condition: and(succeeded(), not(variables['System.PullRequest.TargetBranch']))
