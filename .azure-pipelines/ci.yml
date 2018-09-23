@@ -83,8 +83,6 @@ jobs:
   steps:
   - template: ./docker-steps.yml
 
-  condition: eq(variables['manylinux'], 'true')
-
 
 - job: Ubuntu_Coverage_CI_Tests
   displayName: Ubuntu CI Tests (coverage)
