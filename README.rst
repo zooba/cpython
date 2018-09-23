@@ -36,6 +36,8 @@ reserved.
 
 See the end of this file for further copyright and license information.
 
+Oh look, here's an unrelated change that should trigger a docs build.
+
 .. contents::
 
 General Information
