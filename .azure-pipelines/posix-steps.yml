@@ -47,6 +47,12 @@ steps:
   - script: xvfb-run make buildbottest TESTOPTS="-j4 -uall,-cpu --junit-xml=$(build.binariesDirectory)/test-results.xml"
     displayName: 'Tests'
 
+
+- script: python Tools/scripts/patchcheck.py --travis true
+  displayName: 'Run patchcheck.py'
+  condition: and(succeeded(), eq(variables['Build.Reason'], 'PullRequest'))
+
+
 - task: PublishTestResults@2
   displayName: 'Publish Test Results'
   inputs:
