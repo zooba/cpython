@@ -1,18 +1,18 @@
 jobs:
-- job: Detect_Docs
-  displayName: Detect doc-only changes
+- job: Prebuild
+  displayName: Pre-build checks
 
   pool:
     vmImage: ubuntu-16.04
 
   steps:
-  - template: ./detect-docs.yml
+  - template: ./prebuild-checks.yml
 
 
 - job: Docs_PR
   displayName: Docs PR
-  dependsOn: Detect_Docs
-  condition: and(succeeded(), ne(dependencies.Detect_Docs.outputs['NoDocs'], 'true'))
+  dependsOn: Prebuild
+  condition: and(succeeded(), eq(dependencies.Prebuild.outputs['BuildDocs'], 'true'))
 
   pool:
     vmImage: ubuntu-16.04
@@ -23,8 +23,8 @@ jobs:
 
 - job: macOS_PR_Tests
   displayName: macOS PR Tests
-  dependsOn: Detect_Docs
-  condition: and(succeeded(), ne(dependencies.Detect_Docs.outputs['DocOnly'], 'true'))
+  dependsOn: Prebuild
+  condition: and(succeeded(), eq(dependencies.Prebuild.outputs['RunTests'], 'true'))
 
   variables:
     testRunTitle: '$(system.pullRequest.TargetBranch)-macos'
@@ -41,8 +41,8 @@ jobs:
 
 - job: Ubuntu_PR_Tests
   displayName: Ubuntu PR Tests
-  dependsOn: Detect_Docs
-  condition: and(succeeded(), ne(dependencies.Detect_Docs.outputs['DocOnly'], 'true'))
+  dependsOn: Prebuild
+  condition: and(succeeded(), eq(dependencies.Prebuild.outputs['RunTests'], 'true'))
 
   pool:
     vmImage: ubuntu-16.04
@@ -60,8 +60,8 @@ jobs:
 
 - job: Windows_PR_Tests
   displayName: Windows PR Tests
-  dependsOn: Detect_Docs
-  condition: and(succeeded(), ne(dependencies.Detect_Docs.outputs['DocOnly'], 'true'))
+  dependsOn: Prebuild
+  condition: and(succeeded(), eq(dependencies.Prebuild.outputs['RunTests'], 'true'))
 
   pool:
     vmImage: vs2017-win2017

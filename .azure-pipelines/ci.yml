@@ -3,7 +3,7 @@ variables:
   coverage: false
 
 jobs:
-- job: Detect_Docs
+- job: Prebuild
   displayName: Detect doc-only changes
 
   pool:
@@ -12,9 +12,11 @@ jobs:
   steps:
   - template: ./detect-docs.yml
 
+
 - job: Docs_PR
   displayName: Docs PR
-  condition: and(succeeded(), ne(dependencies.Detect_Docs.outputs['NoDocs'], 'true'))
+  dependsOn: Prebuild
+  condition: and(succeeded(), eq(dependencies.Prebuild.outputs['BuildDocs'], 'true'))
 
   pool:
     vmImage: ubuntu-16.04
@@ -27,7 +29,8 @@ jobs:
 
 - job: macOS_CI_Tests
   displayName: macOS CI Tests
-  condition: and(succeeded(), ne(dependencies.Detect_Docs.outputs['DocOnly'], 'true'))
+  dependsOn: Prebuild
+  condition: and(succeeded(), eq(dependencies.Prebuild.outputs['RunTests'], 'true'))
 
   variables:
     testRunTitle: '$(build.sourceBranchName)-macos'
@@ -42,7 +45,8 @@ jobs:
 
 - job: Ubuntu_CI_Tests
   displayName: Ubuntu CI Tests
-  condition: and(succeeded(), ne(dependencies.Detect_Docs.outputs['DocOnly'], 'true'))
+  dependsOn: Prebuild
+  condition: and(succeeded(), eq(dependencies.Prebuild.outputs['RunTests'], 'true'))
 
   pool:
     vmImage: ubuntu-16.04
@@ -58,13 +62,14 @@ jobs:
 
 - job: ManyLinux1_CI_Tests
   displayName: ManyLinux1 CI Tests
+  dependsOn: Prebuild
   condition: |
     and(
         and(
             succeeded(),
             eq(variables['manylinux'], 'true')
         ),
-        ne(dependencies.Detect_Docs.outputs['DocOnly'], 'true')
+        eq(dependencies.Prebuild.outputs['RunTests'], 'true')
     )
 
   pool:
@@ -83,13 +88,14 @@ jobs:
 
 - job: Ubuntu_Coverage_CI_Tests
   displayName: Ubuntu CI Tests (coverage)
+  dependsOn: Prebuild
   condition: |
     and(
         and(
             succeeded(),
             eq(variables['coverage'], 'true')
         ),
-        ne(dependencies.Detect_Docs.outputs['DocOnly'], 'true')
+        eq(dependencies.Prebuild.outputs['RunTests'], 'true')
     )
 
   pool:
@@ -108,7 +114,8 @@ jobs:
 
 - job: Windows_CI_Tests
   displayName: Windows CI Tests
-  condition: and(succeeded(), ne(dependencies.Detect_Docs.outputs['DocOnly'], 'true'))
+  dependsOn: Prebuild
+  condition: and(succeeded(), eq(dependencies.Prebuild.outputs['RunTests'], 'true'))
 
   pool:
     vmImage: vs2017-win2017

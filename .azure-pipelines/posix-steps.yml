@@ -6,10 +6,6 @@ steps:
   clean: true
   fetchDepth: 5
 
-- ${{ if ne(parameters.targetBranch, '') }}:
-  - script: ./python Tools/scripts/patchcheck.py --travis true
-    displayName: 'Run patchcheck.py'
-
 - script: ./.azure-pipelines/posix-deps.sh $(openssl_version)
   displayName: 'Install dependencies'
 
