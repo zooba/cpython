@@ -3,8 +3,18 @@ variables:
   coverage: false
 
 jobs:
+- job: Detect_Docs
+  displayName: Detect doc-only changes
+
+  pool:
+    vmImage: ubuntu-16.04
+
+  steps:
+  - template: ./detect-docs.yml
+
 - job: Docs_PR
   displayName: Docs PR
+  condition: and(succeeded(), ne(dependencies.Detect_Docs.outputs['NoDocs'], 'true'))
 
   pool:
     vmImage: ubuntu-16.04
@@ -17,6 +27,7 @@ jobs:
 
 - job: macOS_CI_Tests
   displayName: macOS CI Tests
+  condition: and(succeeded(), ne(dependencies.Detect_Docs.outputs['DocOnly'], 'true'))
 
   variables:
     testRunTitle: '$(build.sourceBranchName)-macos'
@@ -31,6 +42,7 @@ jobs:
 
 - job: Ubuntu_CI_Tests
   displayName: Ubuntu CI Tests
+  condition: and(succeeded(), ne(dependencies.Detect_Docs.outputs['DocOnly'], 'true'))
 
   pool:
     vmImage: ubuntu-16.04
@@ -46,6 +58,14 @@ jobs:
 
 - job: ManyLinux1_CI_Tests
   displayName: ManyLinux1 CI Tests
+  condition: |
+    and(
+        and(
+            succeeded(),
+            eq(variables['manylinux'], 'true')
+        ),
+        ne(dependencies.Detect_Docs.outputs['DocOnly'], 'true')
+    )
 
   pool:
     vmImage: ubuntu-16.04
@@ -63,6 +83,14 @@ jobs:
 
 - job: Ubuntu_Coverage_CI_Tests
   displayName: Ubuntu CI Tests (coverage)
+  condition: |
+    and(
+        and(
+            succeeded(),
+            eq(variables['coverage'], 'true')
+        ),
+        ne(dependencies.Detect_Docs.outputs['DocOnly'], 'true')
+    )
 
   pool:
     vmImage: ubuntu-16.04
@@ -77,11 +105,10 @@ jobs:
     parameters:
       coverage: true
 
-  condition: eq(variables['manylinux'], 'true')
-
 
 - job: Windows_CI_Tests
   displayName: Windows CI Tests
+  condition: and(succeeded(), ne(dependencies.Detect_Docs.outputs['DocOnly'], 'true'))
 
   pool:
     vmImage: vs2017-win2017
