@@ -1,4 +1,22 @@
 jobs:
+- job: Detect_Docs
+  displayName: Detect doc-only changes
+
+  pool:
+    vmImage: ubuntu-16.04
+
+  steps:
+  - script: |
+     git fetch -q origin ${{ parameters.targetbranch }}
+     if ! git diff --name-only HEAD $(git merge-base HEAD FETCH_HEAD) | grep -qvE '(\.rst$|^Doc|^Misc)'
+     then
+       echo "Only docs were updated, stopping build process."
+       echo "##vso[task.setvariable variable=DocOnly,isOutput=true]true"
+       exit
+     fi
+    displayName: Detect doc-only changes
+
+
 - job: Docs_PR
   displayName: Docs PR
 
@@ -11,6 +29,7 @@ jobs:
 
 - job: macOS_PR_Tests
   displayName: macOS PR Tests
+  dependsOn: Detect_Docs
 
   variables:
     testRunTitle: '$(system.pullRequest.TargetBranch)-macos'
@@ -24,9 +43,12 @@ jobs:
     parameters:
       targetBranch: $(System.PullRequest.TargetBranch)
 
+  condition: and(succeeded(), ne(dependencies.Detect_Docs.outputs['DocOnly'], 'true'))
+
 
 - job: Ubuntu_PR_Tests
   displayName: Ubuntu PR Tests
+  dependsOn: Detect_Docs
 
   pool:
     vmImage: ubuntu-16.04
@@ -41,9 +63,12 @@ jobs:
     parameters:
       targetBranch: $(System.PullRequest.TargetBranch)
 
+  condition: and(succeeded(), ne(dependencies.Detect_Docs.outputs['DocOnly'], 'true'))
+
 
 - job: Windows_PR_Tests
   displayName: Windows PR Tests
+  dependsOn: Detect_Docs
 
   pool:
     vmImage: vs2017-win2017
@@ -66,3 +91,5 @@ jobs:
   - template: ./windows-steps.yml
     parameters:
       targetBranch: $(System.PullRequest.TargetBranch)
+
+  condition: and(succeeded(), ne(dependencies.Detect_Docs.outputs['DocOnly'], 'true'))
