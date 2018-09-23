@@ -2,7 +2,13 @@ steps:
 - checkout: self
   fetchDepth: 5
 
-- script: ./python Tools/scripts/patchcheck.py --travis true
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: >= 3.7
+  displayName: 'Use Python 3.7 or later'
+  condition: and(succeeded(), eq(variables['Build.Reason'], 'PullRequest'))
+
+- script: python Tools/scripts/patchcheck.py --travis true
   displayName: 'Run patchcheck.py'
   condition: and(succeeded(), eq(variables['Build.Reason'], 'PullRequest'))
 
