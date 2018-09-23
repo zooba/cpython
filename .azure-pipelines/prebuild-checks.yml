@@ -40,11 +40,11 @@ steps:
 #  name: tests
 
 - script: |
-    echo "##vso[task.setvariable variable=run,isOutput=true]true"
+    echo "##vso[task.setvariable variable=run;isOutput=true]true"
   displayName: Detect documentation changes
   name: docs
 
 - script: |
-    echo "##vso[task.setvariable variable=run,isOutput=true]true"
+    echo "##vso[task.setvariable variable=run;isOutput=true]true"
   displayName: Detect source changes
   name: tests
