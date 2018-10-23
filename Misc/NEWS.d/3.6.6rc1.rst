@@ -175,7 +175,7 @@ handshake to hang or fail.
 
 ..
 
-.. bpo: 31467
+.. bpo: 31647
 .. date: 2018-05-28-18-40-26
 .. nonce: s4Fad3
 .. section: Library
@@ -861,7 +861,7 @@ Fix pystackv and pystack gdbinit macros.
 .. nonce: dL5x7C
 .. section: Tools/Demos
 
-Add an ``-n`` flag for ``Tools/scripts/pathfix.py`` to disbale automatic
+Add an ``-n`` flag for ``Tools/scripts/pathfix.py`` to disable automatic
 backup creation (files with ``~`` suffix).
 
 ..
