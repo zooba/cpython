@@ -1858,7 +1858,7 @@ static PyMethodDef sys_methods[] = {
     {"addaudithook", (PyCFunction)sys_addaudithook,
      METH_VARARGS|METH_KEYWORDS, addaudithook_doc},
     {"audit",           sys_audit, METH_VARARGS, audit_doc },
-    {"breakpointhook",  (PyCFunction)(void(*)(void)sys_breakpointhook,
+    {"breakpointhook",  (PyCFunction)(void(*)(void))sys_breakpointhook,
      METH_FASTCALL | METH_KEYWORDS, breakpointhook_doc},
     SYS_CALLSTATS_METHODDEF
     SYS__CLEAR_TYPE_CACHE_METHODDEF
