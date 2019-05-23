@@ -2,6 +2,36 @@
 preserve
 [clinic start generated code]*/
 
+PyDoc_STRVAR(sys_addaudithook__doc__,
+"addaudithook($module, /, hook)\n"
+"--\n"
+"\n"
+"Adds a new audit hook callback.");
+
+#define SYS_ADDAUDITHOOK_METHODDEF    \
+    {"addaudithook", (PyCFunction)sys_addaudithook, METH_FASTCALL|METH_KEYWORDS, sys_addaudithook__doc__},
+
+static PyObject *
+sys_addaudithook_impl(PyObject *module, PyObject *hook);
+
+static PyObject *
+sys_addaudithook(PyObject *module, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)
+{
+    PyObject *return_value = NULL;
+    static const char * const _keywords[] = {"hook", NULL};
+    static _PyArg_Parser _parser = {"O:addaudithook", _keywords, 0};
+    PyObject *hook;
+
+    if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
+        &hook)) {
+        goto exit;
+    }
+    return_value = sys_addaudithook_impl(module, hook);
+
+exit:
+    return return_value;
+}
+
 PyDoc_STRVAR(sys_set_coroutine_origin_tracking_depth__doc__,
 "set_coroutine_origin_tracking_depth($module, /, depth)\n"
 "--\n"
@@ -63,4 +93,4 @@ sys_get_coroutine_origin_tracking_depth(PyObject *module, PyObject *Py_UNUSED(ig
 exit:
     return return_value;
 }
-/*[clinic end generated code: output=4a3ac42b97d710ff input=a9049054013a1b77]*/
+/*[clinic end generated code: output=d14bdf7d10b1ee84 input=a9049054013a1b77]*/

@@ -990,9 +990,13 @@ builtin_eval_impl(PyObject *module, PyObject *source, PyObject *globals,
     }
 
     if (PyCode_Check(source)) {
+        if (PySys_Audit("exec", "O", source) < 0) {
+            return NULL;
+        }
+
         if (PyCode_GetNumFree((PyCodeObject *)source) > 0) {
             PyErr_SetString(PyExc_TypeError,
-        "code object passed to eval() may not contain free variables");
+                "code object passed to eval() may not contain free variables");
             return NULL;
         }
         return PyEval_EvalCode(source, globals, locals);
@@ -1070,6 +1074,10 @@ builtin_exec_impl(PyObject *module, PyObject *source, PyObject *globals,
     }
 
     if (PyCode_Check(source)) {
+        if (PySys_Audit("exec", "O", source) < 0) {
+            return NULL;
+        }
+
         if (PyCode_GetNumFree((PyCodeObject *)source) > 0) {
             PyErr_SetString(PyExc_TypeError,
                 "code object passed to exec() may not "
@@ -1213,7 +1221,14 @@ static PyObject *
 builtin_id(PyModuleDef *self, PyObject *v)
 /*[clinic end generated code: output=0aa640785f697f65 input=5a534136419631f4]*/
 {
-    return PyLong_FromVoidPtr(v);
+    PyObject *id = PyLong_FromVoidPtr(v);
+
+    if (id && PySys_Audit("builtins.id", "O", id) < 0) {
+        Py_DECREF(id);
+        return NULL;
+    }
+
+    return id;
 }
 
 
@@ -1985,6 +2000,10 @@ builtin_input_impl(PyObject *module, PyObject *prompt)
         return NULL;
     }
 
+    if (PySys_Audit("builtins.input", "O", prompt ? prompt : Py_None) < 0) {
+        return NULL;
+    }
+
     /* First of all, flush stderr */
     tmp = _PyObject_CallMethodId(ferr, &PyId_flush, NULL);
     if (tmp == NULL)
@@ -2115,6 +2134,13 @@ builtin_input_impl(PyObject *module, PyObject *prompt)
         Py_DECREF(stdin_errors);
         Py_XDECREF(po);
         PyMem_FREE(s);
+
+        if (result != NULL) {
+            if (PySys_Audit("builtins.input/result", "O", result) < 0) {
+                return NULL;
+            }
+        }
+
         return result;
 
     _readline_errors:

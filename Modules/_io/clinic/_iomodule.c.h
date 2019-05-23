@@ -158,4 +158,37 @@ _io_open(PyObject *module, PyObject *const *args, Py_ssize_t nargs, PyObject *kw
 exit:
     return return_value;
 }
-/*[clinic end generated code: output=a9de1ae79c960e81 input=a9049054013a1b77]*/
+
+PyDoc_STRVAR(_io_open_code__doc__,
+"open_code($module, /, path)\n"
+"--\n"
+"\n"
+"Opens the provided file with the intent to import the contents.\n"
+"\n"
+"This may perform extra validation beyond open(), but is otherwise interchangeable\n"
+"with calling open(path, \'rb\').");
+
+#define _IO_OPEN_CODE_METHODDEF    \
+    {"open_code", (PyCFunction)_io_open_code, METH_FASTCALL|METH_KEYWORDS, _io_open_code__doc__},
+
+static PyObject *
+_io_open_code_impl(PyObject *module, PyObject *path);
+
+static PyObject *
+_io_open_code(PyObject *module, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)
+{
+    PyObject *return_value = NULL;
+    static const char * const _keywords[] = {"path", NULL};
+    static _PyArg_Parser _parser = {"U:open_code", _keywords, 0};
+    PyObject *path;
+
+    if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
+        &path)) {
+        goto exit;
+    }
+    return_value = _io_open_code_impl(module, path);
+
+exit:
+    return return_value;
+}
+/*[clinic end generated code: output=e32f6f6b3c1fb9be input=a9049054013a1b77]*/

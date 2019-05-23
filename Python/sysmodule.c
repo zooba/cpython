@@ -19,6 +19,7 @@ Data members:
 #include "code.h"
 #include "frameobject.h"
 #include "pythread.h"
+#include "pydtrace.h"
 
 #include "osdefs.h"
 #include <locale.h>
@@ -102,6 +103,313 @@ PySys_SetObject(const char *name, PyObject *v)
     else
         return PyDict_SetItemString(sd, name, v);
 }
+
+static int
+should_audit(void)
+{
+    PyThreadState *ts = PyThreadState_GET();
+    if (!ts) {
+        return 0;
+    }
+    PyInterpreterState *is = ts ? ts->interp : NULL;
+    return _PyRuntime.audit_hook_head
+        || (is && is->audit_hooks)
+        || PyDTrace_AUDIT_ENABLED();
+}
+
+int
+PySys_Audit(const char *event, const char *argFormat, ...)
+{
+    PyObject *eventName = NULL;
+    PyObject *eventArgs = NULL;
+    PyObject *hooks = NULL;
+    PyObject *hook = NULL;
+    int res = -1;
+
+    /* N format is inappropriate, because you do not know
+       whether the reference is consumed by the call.
+       Assert rather than exception for perf reasons */
+    assert(!argFormat || !strchr(argFormat, 'N'));
+
+    /* Early exit when no hooks are registered */
+    if (!should_audit()) {
+        return 0;
+    }
+
+    _Py_AuditHookEntry *e = _PyRuntime.audit_hook_head;
+    PyThreadState *ts = PyThreadState_GET();
+    PyInterpreterState *is = ts ? ts->interp : NULL;
+    int dtrace = PyDTrace_AUDIT_ENABLED();
+
+    PyObject *exc_type, *exc_value, *exc_tb;
+    if (ts) {
+        PyErr_Fetch(&exc_type, &exc_value, &exc_tb);
+    }
+
+    /* Initialize event args now */
+    if (argFormat && argFormat[0]) {
+        va_list args;
+        va_start(args, argFormat);
+        eventArgs = Py_VaBuildValue(argFormat, args);
+        if (eventArgs && !PyTuple_Check(eventArgs)) {
+            PyObject *argTuple = PyTuple_Pack(1, eventArgs);
+            Py_DECREF(eventArgs);
+            eventArgs = argTuple;
+        }
+    } else {
+        eventArgs = PyTuple_New(0);
+    }
+    if (!eventArgs) {
+        goto exit;
+    }
+
+    /* Call global hooks */
+    for (; e; e = e->next) {
+        if (e->hookCFunction(event, eventArgs, e->userData) < 0) {
+            goto exit;
+        }
+    }
+
+    /* Dtrace USDT point */
+    if (dtrace) {
+        PyDTrace_AUDIT(event, (void *)eventArgs);
+    }
+
+    /* Call interpreter hooks */
+    if (is && is->audit_hooks) {
+        eventName = PyUnicode_FromString(event);
+        if (!eventName) {
+            goto exit;
+        }
+
+        hooks = PyObject_GetIter(is->audit_hooks);
+        if (!hooks) {
+            goto exit;
+        }
+
+        /* Disallow tracing in hooks unless explicitly enabled */
+        ts->tracing++;
+        ts->use_tracing = 0;
+        while ((hook = PyIter_Next(hooks)) != NULL) {
+            PyObject *o;
+            int canTrace = -1;
+            o = PyObject_GetAttrString(hook, "__cantrace__");
+            if (o) {
+                canTrace = PyObject_IsTrue(o);
+                Py_DECREF(o);
+            } else if (PyErr_Occurred() &&
+                       PyErr_ExceptionMatches(PyExc_AttributeError)) {
+                PyErr_Clear();
+                canTrace = 0;
+            }
+            if (canTrace < 0) {
+                break;
+            }
+            if (canTrace) {
+                ts->use_tracing = (ts->c_tracefunc || ts->c_profilefunc);
+                ts->tracing--;
+            }
+            o = PyObject_CallFunctionObjArgs(hook, eventName,
+                                             eventArgs, NULL);
+            if (canTrace) {
+                ts->tracing++;
+                ts->use_tracing = 0;
+            }
+            if (!o) {
+                break;
+            }
+            Py_DECREF(o);
+            Py_CLEAR(hook);
+        }
+        ts->use_tracing = (ts->c_tracefunc || ts->c_profilefunc);
+        ts->tracing--;
+        if (PyErr_Occurred()) {
+            goto exit;
+        }
+    }
+
+    res = 0;
+
+exit:
+    Py_XDECREF(hook);
+    Py_XDECREF(hooks);
+    Py_XDECREF(eventName);
+    Py_XDECREF(eventArgs);
+
+    if (ts) {
+        if (!res) {
+            PyErr_Restore(exc_type, exc_value, exc_tb);
+        } else {
+            assert(PyErr_Occurred());
+            Py_XDECREF(exc_type);
+            Py_XDECREF(exc_value);
+            Py_XDECREF(exc_tb);
+        }
+    }
+
+    return res;
+}
+
+/* We expose this function primarily for our own cleanup during
+ * finalization. In general, it should not need to be called,
+ * and as such it is not defined in any header files.
+ */
+void _PySys_ClearAuditHooks(void) {
+    /* Must be finalizing to clear hooks */
+    PyThreadState *ts = PyThreadState_GET();
+    assert(!ts || _Py_CURRENTLY_FINALIZING(ts));
+    if (!ts || !_Py_CURRENTLY_FINALIZING(ts))
+        return;
+
+    if (Py_VerboseFlag) {
+        PySys_WriteStderr("# clear sys.audit hooks\n");
+    }
+
+    /* Hooks can abort later hooks for this event, but cannot
+       abort the clear operation itself. */
+    PySys_Audit("cpython._PySys_ClearAuditHooks", NULL);
+    PyErr_Clear();
+
+    _Py_AuditHookEntry *e = _PyRuntime.audit_hook_head, *n;
+    _PyRuntime.audit_hook_head = NULL;
+    while (e) {
+        n = e->next;
+        PyMem_RawFree(e);
+        e = n;
+    }
+}
+
+int
+PySys_AddAuditHook(Py_AuditHookFunction hook, void *userData)
+{
+    /* Invoke existing audit hooks to allow them an opportunity to abort. */
+    /* Cannot invoke hooks until we are initialized */
+    if (Py_IsInitialized()) {
+        if (PySys_Audit("sys.addaudithook", NULL) < 0) {
+            if (PyErr_ExceptionMatches(PyExc_Exception)) {
+                /* We do not report errors derived from Exception */
+                PyErr_Clear();
+                return 0;
+            }
+            return -1;
+        }
+    }
+
+    _Py_AuditHookEntry *e = _PyRuntime.audit_hook_head;
+    if (!e) {
+        e = (_Py_AuditHookEntry*)PyMem_RawMalloc(sizeof(_Py_AuditHookEntry));
+        _PyRuntime.audit_hook_head = e;
+    } else {
+        while (e->next)
+            e = e->next;
+        e = e->next = (_Py_AuditHookEntry*)PyMem_RawMalloc(
+            sizeof(_Py_AuditHookEntry));
+    }
+
+    if (!e) {
+        if (Py_IsInitialized())
+            PyErr_NoMemory();
+        return -1;
+    }
+
+    e->next = NULL;
+    e->hookCFunction = (Py_AuditHookFunction)hook;
+    e->userData = userData;
+
+    return 0;
+}
+
+/*[clinic input]
+sys.addaudithook
+
+    hook: object
+
+Adds a new audit hook callback.
+[clinic start generated code]*/
+
+static PyObject *
+sys_addaudithook_impl(PyObject *module, PyObject *hook)
+/*[clinic end generated code: output=4f9c17aaeb02f44e input=0f3e191217a45e34]*/
+{
+    /* Invoke existing audit hooks to allow them an opportunity to abort. */
+    if (PySys_Audit("sys.addaudithook", NULL) < 0) {
+        if (PyErr_ExceptionMatches(PyExc_Exception)) {
+            /* We do not report errors derived from Exception */
+            PyErr_Clear();
+            Py_RETURN_NONE;
+        }
+        return NULL;
+    }
+
+    PyThreadState *ts = PyThreadState_GET();
+    PyInterpreterState *is = ts->interp;
+
+    if (is->audit_hooks == NULL) {
+        is->audit_hooks = PyList_New(0);
+        if (is->audit_hooks == NULL) {
+            return NULL;
+        }
+    }
+
+    if (PyList_Append(is->audit_hooks, hook) < 0) {
+        return NULL;
+    }
+
+    Py_RETURN_NONE;
+}
+
+PyDoc_STRVAR(audit_doc,
+"audit(event, *args)\n\
+\n\
+Passes the event to any audit hooks that are attached.");
+
+static PyObject *
+sys_audit(PyObject *self, PyObject *const *args, Py_ssize_t argc)
+{
+    if (argc == 0) {
+        PyErr_SetString(PyExc_TypeError, "audit() missing 1 required positional argument: 'event'");
+        return NULL;
+    }
+
+    if (!should_audit()) {
+        Py_RETURN_NONE;
+    }
+
+    PyObject *auditEvent = args[0];
+    if (!auditEvent) {
+        PyErr_SetString(PyExc_TypeError, "expected str for argument 'event'");
+        return NULL;
+    }
+    if (!PyUnicode_Check(auditEvent)) {
+        PyErr_Format(PyExc_TypeError, "expected str for argument 'event', not %.200s",
+            Py_TYPE(auditEvent)->tp_name);
+        return NULL;
+    }
+    const char *event = PyUnicode_AsUTF8(auditEvent);
+    if (!event) {
+        return NULL;
+    }
+
+    PyObject *auditArgs = PyTuple_New(argc - 1);
+    if (!auditArgs) {
+        return NULL;
+    }
+    for (int i = 1; i < argc; ++i) {
+        PyObject *a = args[i];
+        Py_INCREF(a);
+        PyTuple_SET_ITEM(auditArgs, i - 1, a);
+    }
+
+    int res = PySys_Audit(event, "O", auditArgs);
+    Py_DECREF(auditArgs);
+
+    if (res < 0) {
+        return NULL;
+    }
+
+    Py_RETURN_NONE;
+}
+
 
 static PyObject *
 sys_breakpointhook(PyObject *self, PyObject *const *args, Py_ssize_t nargs, PyObject *keywords)
@@ -1358,6 +1666,10 @@ sys_getframe(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "|i:_getframe", &depth))
         return NULL;
 
+    if (PySys_Audit("sys._getframe", "O", f) < 0) {
+        return NULL;
+    }
+
     while (depth > 0 && f != NULL) {
         f = f->f_back;
         --depth;
@@ -1515,9 +1827,12 @@ sys_getandroidapilevel(PyObject *self)
 #endif   /* ANDROID_API_LEVEL */
 
 
+
 static PyMethodDef sys_methods[] = {
     /* Might as well keep this in alphabetic order */
-    {"breakpointhook",  (PyCFunction)sys_breakpointhook,
+    SYS_ADDAUDITHOOK_METHODDEF
+    {"audit",           (PyCFunction)(void(*)(void))sys_audit, METH_FASTCALL, audit_doc },
+    {"breakpointhook",  (PyCFunction)(void(*)(void))sys_breakpointhook,
      METH_FASTCALL | METH_KEYWORDS, breakpointhook_doc},
     {"callstats", (PyCFunction)sys_callstats, METH_NOARGS,
      callstats_doc},
