@@ -67,8 +67,7 @@ static void dtrace_function_entry(PyFrameObject *);
 static void dtrace_function_return(PyFrameObject *);
 
 static PyObject * cmp_outcome(PyThreadState *, int, PyObject *, PyObject *);
-static PyObject * import_name(PyThreadState *, PyFrameObject *,
-                              PyObject *, PyObject *, PyObject *);
+static PyObject * import_name(PyThreadState *, PyFrameObject *, PyObject *);
 static PyObject * import_from(PyThreadState *, PyObject *, PyObject *);
 static int import_all_from(PyThreadState *, PyObject *, PyObject *);
 static void format_exc_check_arg(PyThreadState *, PyObject *, const char *, PyObject *);
@@ -1864,9 +1863,8 @@ main_loop:
         }
 
         case TARGET(PRINT_EXPR): {
-            _Py_IDENTIFIER(displayhook);
             PyObject *value = POP();
-            PyObject *hook = _PySys_GetObjectId(&PyId_displayhook);
+            PyObject *hook = PySys_GetObject("displayhook");
             PyObject *res;
             if (hook == NULL) {
                 _PyErr_SetString(tstate, PyExc_RuntimeError,
@@ -2993,7 +2991,7 @@ main_loop:
             PyObject *fromlist = POP();
             PyObject *level = TOP();
             PyObject *res;
-            res = import_name(tstate, f, name, fromlist, level);
+            res = import_name(tstate, f, name);
             Py_DECREF(level);
             Py_DECREF(fromlist);
             SET_TOP(res);
@@ -5141,12 +5139,11 @@ cmp_outcome(PyThreadState *tstate, int op, PyObject *v, PyObject *w)
 }
 
 static PyObject *
-import_name(PyThreadState *tstate, PyFrameObject *f,
-            PyObject *name, PyObject *fromlist, PyObject *level)
+import_name(PyThreadState *tstate, PyFrameObject *f, PyObject *name)
 {
     _Py_IDENTIFIER(__import__);
     PyObject *import_func, *res;
-    PyObject* stack[5];
+    PyObject* stack[1];
 
     import_func = _PyDict_GetItemIdWithError(f->f_builtins, &PyId___import__);
     if (import_func == NULL) {
@@ -5156,29 +5153,10 @@ import_name(PyThreadState *tstate, PyFrameObject *f,
         return NULL;
     }
 
-    /* Fast path for not overloaded __import__. */
-    if (import_func == tstate->interp->import_func) {
-        int ilevel = _PyLong_AsInt(level);
-        if (ilevel == -1 && _PyErr_Occurred(tstate)) {
-            return NULL;
-        }
-        res = PyImport_ImportModuleLevelObject(
-                        name,
-                        f->f_globals,
-                        f->f_locals == NULL ? Py_None : f->f_locals,
-                        fromlist,
-                        ilevel);
-        return res;
-    }
-
     Py_INCREF(import_func);
 
     stack[0] = name;
-    stack[1] = f->f_globals;
-    stack[2] = f->f_locals == NULL ? Py_None : f->f_locals;
-    stack[3] = fromlist;
-    stack[4] = level;
-    res = _PyObject_FastCall(import_func, stack, 5);
+    res = _PyObject_FastCall(import_func, stack, 1);
     Py_DECREF(import_func);
     return res;
 }
@@ -5209,7 +5187,7 @@ import_from(PyThreadState *tstate, PyObject *v, PyObject *name)
         Py_DECREF(pkgname);
         return NULL;
     }
-    x = PyImport_GetModule(fullmodname);
+    x = PyImport_GetModuleObject(fullmodname);
     Py_DECREF(fullmodname);
     if (x == NULL && !_PyErr_Occurred(tstate)) {
         goto error;

@@ -3,7 +3,6 @@
 #include "Python.h"
 #include <ctype.h>
 #include "ast.h"
-#undef Yield   /* undefine macro conflicting with <winbase.h> */
 #include "pycore_pystate.h"
 #include "pycore_tupleobject.h"
 
@@ -18,9 +17,6 @@ _Py_IDENTIFIER(fileno);
 _Py_IDENTIFIER(flush);
 _Py_IDENTIFIER(metaclass);
 _Py_IDENTIFIER(sort);
-_Py_IDENTIFIER(stdin);
-_Py_IDENTIFIER(stdout);
-_Py_IDENTIFIER(stderr);
 
 #include "clinic/bltinmodule.c.h"
 
@@ -267,34 +263,21 @@ Internal helper function used by the class statement.");
 static PyObject *
 builtin___import__(PyObject *self, PyObject *args, PyObject *kwds)
 {
-    static char *kwlist[] = {"name", "globals", "locals", "fromlist",
-                             "level", 0};
-    PyObject *name, *globals = NULL, *locals = NULL, *fromlist = NULL;
-    int level = 0;
+    static char *kwlist[] = {"name", 0};
+    PyObject *name;
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "U|OOOi:__import__",
-                    kwlist, &name, &globals, &locals, &fromlist, &level))
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "U:__import__",
+                    kwlist, &name))
         return NULL;
-    return PyImport_ImportModuleLevelObject(name, globals, locals,
-                                            fromlist, level);
+    return PyImport_Import(name);
 }
 
 PyDoc_STRVAR(import_doc,
-"__import__(name, globals=None, locals=None, fromlist=(), level=0) -> module\n\
+"__import__(name) -> module\n\
 \n\
 Import a module. Because this function is meant for use by the Python\n\
 interpreter and not for general use, it is better to use\n\
-importlib.import_module() to programmatically import a module.\n\
-\n\
-The globals argument is only used to determine the context;\n\
-they are not modified.  The locals argument is unused.  The fromlist\n\
-should be a list of names to emulate ``from name import ...'', or an\n\
-empty list to emulate ``import name''.\n\
-When importing a module from a package, note that __import__('A.B', ...)\n\
-returns package A when fromlist is empty, but its submodule B when\n\
-fromlist is not empty.  The level argument is used to determine whether to\n\
-perform absolute or relative imports: 0 is absolute, while a positive number\n\
-is the number of parent directories to search relative to the current module.");
+importlib.import_module() to programmatically import a module.");
 
 
 /*[clinic input]
@@ -1832,7 +1815,7 @@ builtin_print(PyObject *self, PyObject *const *args, Py_ssize_t nargs, PyObject 
     }
 
     if (file == NULL || file == Py_None) {
-        file = _PySys_GetObjectId(&PyId_stdout);
+        file = PySys_GetObject("stdout");
         if (file == NULL) {
             PyErr_SetString(PyExc_RuntimeError, "lost sys.stdout");
             return NULL;
@@ -1924,9 +1907,9 @@ static PyObject *
 builtin_input_impl(PyObject *module, PyObject *prompt)
 /*[clinic end generated code: output=83db5a191e7a0d60 input=5e8bb70c2908fe3c]*/
 {
-    PyObject *fin = _PySys_GetObjectId(&PyId_stdin);
-    PyObject *fout = _PySys_GetObjectId(&PyId_stdout);
-    PyObject *ferr = _PySys_GetObjectId(&PyId_stderr);
+    PyObject *fin = PySys_GetObject("stdin");
+    PyObject *fout = PySys_GetObject("stdout");
+    PyObject *ferr = PySys_GetObject("stderr");
     PyObject *tmp;
     long fd;
     int tty;

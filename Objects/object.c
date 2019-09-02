@@ -1675,7 +1675,7 @@ PyTypeObject _PyNone_Type = {
 
 PyObject _Py_NoneStruct = {
   _PyObject_EXTRA_INIT
-  1, &_PyNone_Type
+  &_PyNone_Type, -1
 };
 
 /* NotImplemented is an object that can be used to signal that an
@@ -1760,7 +1760,7 @@ PyTypeObject _PyNotImplemented_Type = {
 
 PyObject _Py_NotImplementedStruct = {
     _PyObject_EXTRA_INIT
-    1, &_PyNotImplemented_Type
+    &_PyNotImplemented_Type, -1
 };
 
 PyStatus

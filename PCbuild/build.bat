@@ -52,15 +52,19 @@ exit /b 127
 
 :Run
 setlocal
-set platf=Win32
-set conf=Release
+set platf=x64
+set conf=Debug
 set target=Build
 set dir=%~dp0
 set parallel=/m
-set verbose=/nologo /v:m
+set verbose=/nologo /v:m /clp:summary
 set kill=
 set do_pgo=
 set pgo_job=-m test --pgo
+set IncludeExternals=false
+set IncludeCTypes=false
+set IncludeSSL=false
+set IncludeTkinter=false
 
 :CheckOpts
 if "%~1"=="-h" goto Usage
@@ -134,7 +138,7 @@ goto :Build
 
 :Kill
 echo on
-%MSBUILD% "%dir%\pythoncore.vcxproj" /t:KillPython %verbose%^
+%MSBUILD% "%dir%\core.vcxproj" /t:KillPython %verbose%^
  /p:Configuration=%conf% /p:Platform=%platf%^
  /p:KillPython=true
 
@@ -146,7 +150,7 @@ rem Call on MSBuild to do the work, echo the command.
 rem Passing %1-9 is not the preferred option, but argument parsing in
 rem batch is, shall we say, "lackluster"
 echo on
-%MSBUILD% "%dir%pcbuild.proj" /t:%target% %parallel% %verbose%^
+%MSBUILD% "%dir%core.vcxproj" /t:%target% %parallel% %verbose%^
  /p:Configuration=%conf% /p:Platform=%platf%^
  /p:IncludeExternals=%IncludeExternals%^
  /p:IncludeCTypes=%IncludeCTypes%^

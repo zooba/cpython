@@ -100,7 +100,6 @@ struct _is {
     struct {
         char *encoding;   /* Filesystem encoding (encoded to UTF-8) */
         char *errors;     /* Filesystem errors (encoded to UTF-8) */
-        _Py_error_handler error_handler;
     } fs_codec;
 
     PyConfig config;

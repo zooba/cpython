@@ -82,7 +82,7 @@ whose size is determined when the object is allocated.
 
 #define PyObject_HEAD_INIT(type)        \
     { _PyObject_EXTRA_INIT              \
-    1, type },
+    type, 1 },
 
 #define PyVarObject_HEAD_INIT(type, size)       \
     { PyObject_HEAD_INIT(type) size },
@@ -103,8 +103,8 @@ whose size is determined when the object is allocated.
  */
 typedef struct _object {
     _PyObject_HEAD_EXTRA
-    Py_ssize_t ob_refcnt;
     struct _typeobject *ob_type;
+    Py_ssize_t ob_refcnt;
 } PyObject;
 
 /* Cast argument to PyObject* type. */
@@ -455,8 +455,10 @@ PyAPI_FUNC(void) _Py_Dealloc(PyObject *);
 
 static inline void _Py_INCREF(PyObject *op)
 {
-    _Py_INC_REFTOTAL;
-    op->ob_refcnt++;
+    if (op->ob_refcnt >= 0) {
+        _Py_INC_REFTOTAL;
+        op->ob_refcnt++;
+    }
 }
 
 #define Py_INCREF(op) _Py_INCREF(_PyObject_CAST(op))
@@ -466,16 +468,18 @@ static inline void _Py_DECREF(const char *filename, int lineno,
 {
     (void)filename; /* may be unused, shut up -Wunused-parameter */
     (void)lineno; /* may be unused, shut up -Wunused-parameter */
-    _Py_DEC_REFTOTAL;
-    if (--op->ob_refcnt != 0) {
-#ifdef Py_REF_DEBUG
-        if (op->ob_refcnt < 0) {
-            _Py_NegativeRefcount(filename, lineno, op);
+    if (op->ob_refcnt >= 0) {
+        _Py_DEC_REFTOTAL;
+        if (--op->ob_refcnt != 0) {
+    #ifdef Py_REF_DEBUG
+            if (op->ob_refcnt < 0) {
+                _Py_NegativeRefcount(filename, lineno, op);
+            }
+    #endif
         }
-#endif
-    }
-    else {
-        _Py_Dealloc(op);
+        else {
+            _Py_Dealloc(op);
+        }
     }
 }
 

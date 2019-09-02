@@ -60,9 +60,6 @@
  */
 #include <assert.h>
 
-#include "pyport.h"
-#include "pymacro.h"
-
 /* A convenient way for code to know if clang's memory sanitizer is enabled. */
 #if defined(__has_feature)
 #  if __has_feature(memory_sanitizer)
@@ -81,6 +78,14 @@
 #if defined(PYMALLOC_DEBUG) && !defined(WITH_PYMALLOC)
 #error "PYMALLOC_DEBUG requires WITH_PYMALLOC"
 #endif
+
+#ifdef Py_BUILD_CORE
+#include "pyport.h"
+#include "pymacro.h"
+#endif
+
+#include "platform_adaptation.h"
+
 #include "pymath.h"
 #include "pytime.h"
 #include "pymem.h"
@@ -153,7 +158,6 @@
 #include "pystrtod.h"
 #include "pystrcmp.h"
 #include "dtoa.h"
-#include "fileutils.h"
 #include "pyfpe.h"
 #include "tracemalloc.h"
 

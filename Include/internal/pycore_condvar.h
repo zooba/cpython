@@ -34,10 +34,6 @@
  */
 #define Py_HAVE_CONDVAR
 
-/* include windows if it hasn't been done before */
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-
 /* options */
 /* non-emulated condition variables are provided for those that want
  * to target Windows Vista.  Modify this macro to enable them.

@@ -234,6 +234,35 @@ PyAPI_FUNC(PyObject *) PyCodec_NameReplaceErrors(PyObject *exc);
 PyAPI_DATA(const char *) Py_hexdigits;
 #endif
 
+typedef enum {
+    _Py_ERROR_UNKNOWN=0,
+    _Py_ERROR_STRICT,
+    _Py_ERROR_SURROGATEESCAPE,
+    _Py_ERROR_REPLACE,
+    _Py_ERROR_IGNORE,
+    _Py_ERROR_BACKSLASHREPLACE,
+    _Py_ERROR_SURROGATEPASS,
+    _Py_ERROR_XMLCHARREFREPLACE,
+    _Py_ERROR_OTHER
+} _Py_error_handler;
+
+
+PyAPI_FUNC(int) _Py_DecodeLocaleEx(
+    const char *arg,
+    char **u8str,
+    size_t *u8len,
+    const char **reason,
+    int current_locale,
+    _Py_error_handler errors);
+
+PyAPI_FUNC(int) _Py_EncodeLocaleEx(
+    const char *u8text,
+    char **str,
+    size_t *error_pos,
+    const char **reason,
+    int current_locale,
+    _Py_error_handler errors);
+
 #ifdef __cplusplus
 }
 #endif

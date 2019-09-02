@@ -4090,27 +4090,7 @@ static PyGetSetDef object_getsets[] = {
 static PyObject *
 import_copyreg(void)
 {
-    PyObject *copyreg_str;
-    PyObject *copyreg_module;
-    _Py_IDENTIFIER(copyreg);
-
-    copyreg_str = _PyUnicode_FromId(&PyId_copyreg);
-    if (copyreg_str == NULL) {
-        return NULL;
-    }
-    /* Try to fetch cached copy of copyreg from sys.modules first in an
-       attempt to avoid the import overhead. Previously this was implemented
-       by storing a reference to the cached module in a static variable, but
-       this broke when multiple embedded interpreters were in use (see issue
-       #17408 and #19088). */
-    copyreg_module = PyImport_GetModule(copyreg_str);
-    if (copyreg_module != NULL) {
-        return copyreg_module;
-    }
-    if (PyErr_Occurred()) {
-        return NULL;
-    }
-    return PyImport_Import(copyreg_str);
+    return PyImport_ImportModule("copyreg");
 }
 
 static PyObject *

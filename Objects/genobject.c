@@ -79,7 +79,8 @@ _PyGen_Finalize(PyObject *self)
         ((PyCodeObject *)gen->gi_code)->co_flags & CO_COROUTINE &&
         gen->gi_frame->f_lasti == -1)
     {
-        _PyErr_WarnUnawaitedCoroutine((PyObject *)gen);
+        /* TODO: Proper error handling for failed warning */
+        PyErr_Warn(PyExc_RuntimeWarning, "unawaited coroutine");
     }
     else {
         res = gen_close(gen, NULL);

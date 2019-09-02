@@ -3,7 +3,6 @@
    of int.__float__, etc., that take and return unicode objects */
 
 #include "Python.h"
-#include "pycore_fileutils.h"
 #include <locale.h>
 
 /* Raises an exception about an unknown presentation type for this
@@ -700,11 +699,14 @@ get_locale_info(enum LocaleType type, LocaleInfo *locale_info)
     switch (type) {
     case LT_CURRENT_LOCALE: {
         struct lconv *lc = localeconv();
-        if (_Py_GetLocaleconvNumeric(lc,
+        /*if (_Py_GetLocaleconvNumeric(lc,
                                      &locale_info->decimal_point,
                                      &locale_info->thousands_sep) < 0) {
             return -1;
-        }
+        }*/
+        /* TODO: Extract from locale properly */
+        locale_info->decimal_point = PyUnicode_FromOrdinal('.');
+        locale_info->thousands_sep = PyUnicode_FromOrdinal(',');
 
         /* localeconv() grouping can become a dangling pointer or point
            to a different string if another thread calls localeconv() during

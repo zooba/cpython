@@ -1788,7 +1788,7 @@ PyTokenizer_FindEncodingFilename(int fd, PyObject *filename)
     FILE *fp;
     char *p_start =NULL , *p_end =NULL , *encoding = NULL;
 
-    fd = _Py_dup(fd);
+    fd = dup(fd);
     if (fd < 0) {
         return NULL;
     }

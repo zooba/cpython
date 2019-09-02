@@ -76,6 +76,13 @@ WIN32 is still required for the locale module.
 #define USE_SOCKET
 #endif
 
+/* include windows.h if it hasn't been done before, otherwise
+ * we cannot define our GIL structures. Since that path is
+ * unavoidable, we include this early to avoid name conflicts
+ */
+#ifndef HANDLE
+#include <windows.h>
+#endif
 
 /* Compiler specific defines */
 

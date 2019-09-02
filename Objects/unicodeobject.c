@@ -41,7 +41,6 @@ OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #define PY_SSIZE_T_CLEAN
 #include "Python.h"
 #include "pycore_initconfig.h"
-#include "pycore_fileutils.h"
 #include "pycore_object.h"
 #include "pycore_pylifecycle.h"
 #include "pycore_pystate.h"
@@ -3549,24 +3548,17 @@ static PyObject *
 unicode_encode_locale(PyObject *unicode, _Py_error_handler error_handler,
                       int current_locale)
 {
-    Py_ssize_t wlen;
-    wchar_t *wstr = PyUnicode_AsWideCharString(unicode, &wlen);
-    if (wstr == NULL) {
-        return NULL;
-    }
-
-    if ((size_t)wlen != wcslen(wstr)) {
-        PyErr_SetString(PyExc_ValueError, "embedded null character");
-        PyMem_Free(wstr);
+    size_t u8len;
+    const char *u8str = PyUnicode_AsUTF8AndSize(unicode, &u8len);
+    if (u8str == NULL) {
         return NULL;
     }
 
     char *str;
     size_t error_pos;
     const char *reason;
-    int res = _Py_EncodeLocaleEx(wstr, &str, &error_pos, &reason,
+    int res = _Py_EncodeLocaleEx(u8str, &str, &error_pos, &reason,
                                  current_locale, error_handler);
-    PyMem_Free(wstr);
 
     if (res != 0) {
         if (res == -2) {
@@ -3789,18 +3781,18 @@ unicode_decode_locale(const char *str, Py_ssize_t len,
         return NULL;
     }
 
-    wchar_t *wstr;
-    size_t wlen;
+    char *u8str;
+    size_t u8len;
     const char *reason;
-    int res = _Py_DecodeLocaleEx(str, &wstr, &wlen, &reason,
+    int res = _Py_DecodeLocaleEx(str, &u8str, &u8len, &reason,
                                  current_locale, errors);
     if (res != 0) {
         if (res == -2) {
             PyObject *exc;
             exc = PyObject_CallFunction(PyExc_UnicodeDecodeError, "sy#nns",
                                         "locale", str, len,
-                                        (Py_ssize_t)wlen,
-                                        (Py_ssize_t)(wlen + 1),
+                                        (Py_ssize_t)u8len,
+                                        (Py_ssize_t)(u8len + 1),
                                         reason);
             if (exc != NULL) {
                 PyCodec_StrictErrors(exc);
@@ -3816,8 +3808,8 @@ unicode_decode_locale(const char *str, Py_ssize_t len,
         return NULL;
     }
 
-    PyObject *unicode = PyUnicode_FromWideChar(wstr, wlen);
-    PyMem_RawFree(wstr);
+    PyObject *unicode = PyUnicode_FromStringAndSize(u8str, u8len);
+    PyMem_RawFree(u8str);
     return unicode;
 }
 
@@ -3896,14 +3888,24 @@ PyUnicode_FSConverter(PyObject* arg, void* addr)
         *(PyObject**)addr = NULL;
         return 1;
     }
-    path = PyOS_FSPath(arg);
-    if (path == NULL) {
-        return 0;
+    if (PyBytes_Check(arg)) {
+        output = arg;
     }
-    if (PyBytes_Check(path)) {
-        output = path;
+    else if (PyUnicode_Check(arg)) {
+        path = arg;
+        Py_INCREF(path);
     }
-    else {  // PyOS_FSPath() guarantees its returned value is bytes or str.
+    else {
+        path = PyObject_CallMethod(arg, "__fspath__", NULL);
+        if (path == NULL) {
+            return 0;
+        }
+        if (!PyBytes_Check(path) && !PyUnicode_Check(path)) {
+            PyErr_SetString(PyExc_TypeError, "__fspath__ result was not 'bytes' or 'str'");
+            return 0;
+        }
+    }
+    if (!output) {
         output = PyUnicode_EncodeFSDefault(path);
         Py_DECREF(path);
         if (!output) {
@@ -3938,7 +3940,7 @@ PyUnicode_FSDecoder(PyObject* arg, void* addr)
 
     is_buffer = PyObject_CheckBuffer(arg);
     if (!is_buffer) {
-        path = PyOS_FSPath(arg);
+        path = PyObject_CallMethod(arg, "__fspath__", NULL);
         if (path == NULL) {
             return 0;
         }
@@ -15846,7 +15848,6 @@ init_fs_codec(PyInterpreterState *interp)
     interp->fs_codec.encoding = encoding;
     PyMem_RawFree(interp->fs_codec.errors);
     interp->fs_codec.errors = errors;
-    interp->fs_codec.error_handler = error_handler;
 
     /* At this point, PyUnicode_EncodeFSDefault() and
        PyUnicode_DecodeFSDefault() can now use the Python codec rather than

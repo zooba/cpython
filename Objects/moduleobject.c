@@ -173,8 +173,6 @@ _add_methods_to_object(PyObject *module, PyObject *name, PyMethodDef *functions)
 PyObject *
 PyModule_Create2(struct PyModuleDef* module, int module_api_version)
 {
-    if (!_PyImport_IsInitialized(_PyInterpreterState_Get()))
-        Py_FatalError("Python import machinery not initialized");
     return _PyModule_CreateInitialized(module, module_api_version);
 }
 
@@ -681,7 +679,7 @@ module_dealloc(PyModuleObject *m)
 
     PyObject_GC_UnTrack(m);
     if (verbose && m->md_name) {
-        PySys_FormatStderr("# destroy %S\n", m->md_name);
+        PySys_WriteStderr("# destroy %S\n", m->md_name);
     }
     if (m->md_weaklist != NULL)
         PyObject_ClearWeakRefs((PyObject *) m);

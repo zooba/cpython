@@ -1,7 +1,4 @@
 #include "Python.h"
-#ifdef MS_WINDOWS
-#include <windows.h>
-#endif
 
 #if defined(__APPLE__)
 #include <mach/mach_time.h>   /* mach_absolute_time(), mach_timebase_info() */

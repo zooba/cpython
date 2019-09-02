@@ -25,7 +25,6 @@ extern "C" {
 #endif
 
 _Py_IDENTIFIER(builtins);
-_Py_IDENTIFIER(stderr);
 _Py_IDENTIFIER(flush);
 
 
@@ -1278,7 +1277,7 @@ write_unraisable_exc(PyThreadState *tstate, PyObject *exc_type,
                      PyObject *exc_value, PyObject *exc_tb, PyObject *err_msg,
                      PyObject *obj)
 {
-    PyObject *file = _PySys_GetObjectId(&PyId_stderr);
+    PyObject *file = PySys_GetObject("stderr");
     if (file == NULL || file == Py_None) {
         return 0;
     }
@@ -1373,8 +1372,7 @@ _PyErr_WriteUnraisableMsg(const char *err_msg_str, PyObject *obj)
         }
     }
 
-    _Py_IDENTIFIER(unraisablehook);
-    PyObject *hook = _PySys_GetObjectId(&PyId_unraisablehook);
+    PyObject *hook = PySys_GetObject("unraisablehook");
     if (hook != NULL && hook != Py_None) {
         PyObject *hook_args;
 
@@ -1486,14 +1484,6 @@ PyErr_SyntaxLocationObject(PyObject *filename, int lineno, int col_offset)
         if (_PyObject_SetAttrId(v, &PyId_filename, filename)) {
             _PyErr_Clear(tstate);
         }
-
-        tmp = PyErr_ProgramTextObject(filename, lineno);
-        if (tmp) {
-            if (_PyObject_SetAttrId(v, &PyId_text, tmp)) {
-                _PyErr_Clear(tstate);
-            }
-            Py_DECREF(tmp);
-        }
     }
     if (exc != PyExc_SyntaxError) {
         if (!_PyObject_HasAttrId(v, &PyId_msg)) {
@@ -1534,73 +1524,6 @@ PyErr_SyntaxLocationEx(const char *filename, int lineno, int col_offset)
     }
     PyErr_SyntaxLocationObject(fileobj, lineno, col_offset);
     Py_XDECREF(fileobj);
-}
-
-/* Attempt to load the line of text that the exception refers to.  If it
-   fails, it will return NULL but will not set an exception.
-
-   XXX The functionality of this function is quite similar to the
-   functionality in tb_displayline() in traceback.c. */
-
-static PyObject *
-err_programtext(PyThreadState *tstate, FILE *fp, int lineno)
-{
-    int i;
-    char linebuf[1000];
-
-    if (fp == NULL)
-        return NULL;
-    for (i = 0; i < lineno; i++) {
-        char *pLastChar = &linebuf[sizeof(linebuf) - 2];
-        do {
-            *pLastChar = '\0';
-            if (Py_UniversalNewlineFgets(linebuf, sizeof linebuf,
-                                         fp, NULL) == NULL)
-                break;
-            /* fgets read *something*; if it didn't get as
-               far as pLastChar, it must have found a newline
-               or hit the end of the file; if pLastChar is \n,
-               it obviously found a newline; else we haven't
-               yet seen a newline, so must continue */
-        } while (*pLastChar != '\0' && *pLastChar != '\n');
-    }
-    fclose(fp);
-    if (i == lineno) {
-        PyObject *res;
-        res = PyUnicode_FromString(linebuf);
-        if (res == NULL)
-            _PyErr_Clear(tstate);
-        return res;
-    }
-    return NULL;
-}
-
-PyObject *
-PyErr_ProgramText(const char *filename, int lineno)
-{
-    FILE *fp;
-    if (filename == NULL || *filename == '\0' || lineno <= 0) {
-        return NULL;
-    }
-    PyThreadState *tstate = _PyThreadState_GET();
-    fp = _Py_fopen(filename, "r" PY_STDIOTEXTMODE);
-    return err_programtext(tstate, fp, lineno);
-}
-
-PyObject *
-PyErr_ProgramTextObject(PyObject *filename, int lineno)
-{
-    if (filename == NULL || lineno <= 0) {
-        return NULL;
-    }
-
-    PyThreadState *tstate = _PyThreadState_GET();
-    FILE *fp = _Py_fopen_obj(filename, "r" PY_STDIOTEXTMODE);
-    if (fp == NULL) {
-        _PyErr_Clear(tstate);
-        return NULL;
-    }
-    return err_programtext(tstate, fp, lineno);
 }
 
 #ifdef __cplusplus

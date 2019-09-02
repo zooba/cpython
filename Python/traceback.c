@@ -14,7 +14,7 @@
 
 #define OFF(x) offsetof(PyTracebackObject, x)
 
-#define PUTS(fd, str) _Py_write_noraise(fd, str, (int)strlen(str))
+#define PUTS(fd, str) write(fd, str, (int)strlen(str))
 #define MAX_STRING_LENGTH 500
 #define MAX_FRAME_DEPTH 100
 #define MAX_NTHREADS 100
@@ -25,7 +25,6 @@ extern char * PyTokenizer_FindEncodingFilename(int, PyObject *);
 _Py_IDENTIFIER(TextIOWrapper);
 _Py_IDENTIFIER(close);
 _Py_IDENTIFIER(open);
-_Py_IDENTIFIER(path);
 
 /*[clinic input]
 class TracebackType "PyTracebackObject *" "&PyTraceback_Type"
@@ -322,7 +321,7 @@ _Py_FindSourceFile(PyObject *filename, char* namebuf, size_t namelen, PyObject *
         tail++;
     taillen = strlen(tail);
 
-    syspath = _PySys_GetObjectId(&PyId_path);
+    syspath = PySys_GetObject("path");
     if (syspath == NULL || !PyList_Check(syspath))
         goto error;
     npath = PyList_Size(syspath);
@@ -635,18 +634,20 @@ _Py_DumpDecimal(int fd, unsigned long value)
        plus 1 for the null byte.  53/22 is an upper bound for log10(256). */
     char buffer[1 + (sizeof(unsigned long)*53-1) / 22 + 1];
     char *ptr, *end;
+    unsigned int count = 0;
 
     end = &buffer[Py_ARRAY_LENGTH(buffer) - 1];
     ptr = end;
     *ptr = '\0';
     do {
         --ptr;
+        ++count;
         assert(ptr >= buffer);
         *ptr = '0' + (value % 10);
         value /= 10;
     } while (value);
 
-    _Py_write_noraise(fd, ptr, end - ptr);
+    write(fd, ptr, count);
 }
 
 /* Format an integer in range [0; 0xffffffff] to hexadecimal of 'width' digits,
@@ -659,6 +660,7 @@ _Py_DumpHexadecimal(int fd, unsigned long value, Py_ssize_t width)
 {
     char buffer[sizeof(unsigned long) * 2 + 1], *ptr, *end;
     const Py_ssize_t size = Py_ARRAY_LENGTH(buffer) - 1;
+    unsigned int count = 0;
 
     if (width > size)
         width = size;
@@ -669,12 +671,13 @@ _Py_DumpHexadecimal(int fd, unsigned long value, Py_ssize_t width)
     *ptr = '\0';
     do {
         --ptr;
+        ++count;
         assert(ptr >= buffer);
         *ptr = Py_hexdigits[value & 15];
         value >>= 4;
     } while ((end - ptr) < width || value);
 
-    _Py_write_noraise(fd, ptr, end - ptr);
+    write(fd, ptr, count);
 }
 
 void
@@ -727,7 +730,7 @@ _Py_DumpASCII(int fd, PyObject *text)
         if (' ' <= ch && ch <= 126) {
             /* printable ASCII character */
             char c = (char)ch;
-            _Py_write_noraise(fd, &c, 1);
+            write(fd, &c, 1);
         }
         else if (ch <= 0xff) {
             PUTS(fd, "\\x");
@@ -898,7 +901,6 @@ _Py_DumpTracebackThreads(int fd, PyInterpreterState *interp,
     /* Dump the traceback of each thread */
     tstate = PyInterpreterState_ThreadHead(interp);
     nthreads = 0;
-    _Py_BEGIN_SUPPRESS_IPH
     do
     {
         if (nthreads != 0)
@@ -912,7 +914,6 @@ _Py_DumpTracebackThreads(int fd, PyInterpreterState *interp,
         tstate = PyThreadState_Next(tstate);
         nthreads++;
     } while (tstate != NULL);
-    _Py_END_SUPPRESS_IPH
 
     return NULL;
 }

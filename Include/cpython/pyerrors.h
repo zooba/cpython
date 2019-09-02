@@ -55,22 +55,13 @@ typedef struct {
     PyObject *strerror;
     PyObject *filename;
     PyObject *filename2;
-#ifdef MS_WINDOWS
-    PyObject *winerror;
-#endif
-    Py_ssize_t written;   /* only for BlockingIOError, -1 otherwise */
+    PyObject *nativeerror;
 } PyOSErrorObject;
 
 typedef struct {
     PyException_HEAD
     PyObject *value;
 } PyStopIterationObject;
-
-/* Compatibility typedefs */
-typedef PyOSErrorObject PyEnvironmentErrorObject;
-#ifdef MS_WINDOWS
-typedef PyOSErrorObject PyWindowsErrorObject;
-#endif
 
 /* Error handling definitions */
 
