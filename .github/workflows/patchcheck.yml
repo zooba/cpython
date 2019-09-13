@@ -1,4 +1,4 @@
-name: patchcheck
+name: Checks
 
 on:
   pull_request:
@@ -9,12 +9,9 @@ on:
 
 jobs:
   patchcheck:
-    runs-on: ubuntu-latest
-    
+    name: 'Whitespace Checks'
+    runs-on: macos-latest
     steps:
     - uses: actions/checkout@v1
-      with:
-        ref: ${{ github.head_ref }}
-        fetch-depth: 1
     - name: Patchcheck
       run: SRCDIR=$(pwd) python3 Tools/scripts/patchcheck.py --is-pr true
