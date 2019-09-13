@@ -1,0 +1,17 @@
+name: patchcheck
+
+on:
+  pull_request:
+    branches:
+    - master
+    - 3.8
+    - 3.7
+
+jobs:
+  patchcheck:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v1
+    - name: Patchcheck
+      run: _PYTHON_PROJECT_BASE=$(pwd) python3 Tools/scripts/patchcheck.py --travis true
