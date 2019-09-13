@@ -14,4 +14,4 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Patchcheck
-      run: _PYTHON_PROJECT_BASE=$(pwd) python3 Tools/scripts/patchcheck.py --travis true
+      run: _PYTHON_PROJECT_BASE=. python3 Tools/scripts/patchcheck.py --travis true
