@@ -14,4 +14,4 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Patchcheck
-      run: SRCDIR=$(pwd) python3 Tools/scripts/patchcheck.py --is-pr true
+      run: SRCDIR=$(pwd) python3 Tools/scripts/patchcheck.py --base-branch ${{github.base_ref}}

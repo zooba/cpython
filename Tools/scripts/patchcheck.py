@@ -220,8 +220,8 @@ def regenerated_pyconfig_h_in(file_paths):
     else:
         return "not needed"
 
-def main_pr():
-    base_branch = get_base_branch()
+def main_pr(base_branch=None):
+    base_branch = base_branch or get_base_branch()
     file_paths = changed_files(base_branch)
     python_files = [fn for fn in file_paths if fn.endswith('.py')]
     c_files = [fn for fn in file_paths if fn.endswith(('.c', '.h'))]
@@ -273,13 +273,17 @@ def main():
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--is-pr', '--travis',
-                        metavar='true/false',
+    parser.add_argument('--travis',
                         help='Perform pass/fail checks')
+    parser.add_argument('--base-branch', metavar='BRANCH',
+                        help='Perform pass/fail checks against BRANCH')
     args = parser.parse_args()
-    if not args.is_pr:
-        main()
-    elif args.is_pr == 'false':
-        print('Not a pull request; skipping')
+    if args.travis:
+        if args.travis == 'false':
+            print('Not a pull request; skipping')
+        else:
+            main_pr()
+    elif args.base_branch:
+        main_pr(args.base_branch)
     else:
-        main_pr()
+        main()
