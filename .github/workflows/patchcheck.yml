@@ -8,8 +8,7 @@ on:
     - 3.7
 
 jobs:
-  patchcheck:
-    name: 'Whitespace Checks'
+  whitespace:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v1
