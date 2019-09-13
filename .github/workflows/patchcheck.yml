@@ -13,5 +13,8 @@ jobs:
     
     steps:
     - uses: actions/checkout@v1
+      with:
+        ref: ${{ github.head_ref }}
+        depth: 1
     - name: Patchcheck
-      run: _PYTHON_PROJECT_BASE=. python3 Tools/scripts/patchcheck.py --travis true
+      run: SRCDIR=$(pwd) python3 Tools/scripts/patchcheck.py --is-pr true

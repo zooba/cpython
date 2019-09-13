@@ -3,7 +3,7 @@
 import re
 import sys
 import shutil
-import os.path
+import os
 import subprocess
 import sysconfig
 
@@ -18,7 +18,7 @@ EXCLUDE_DIRS = [os.path.join('Modules', '_ctypes', 'libffi_osx'),
                 os.path.join('Modules', '_decimal', 'libmpdec'),
                 os.path.join('Modules', 'expat'),
                 os.path.join('Modules', 'zlib')]
-SRCDIR = sysconfig.get_config_var('srcdir')
+SRCDIR = os.getenv('SRCDIR') or sysconfig.get_config_var('srcdir')
 
 
 def n_files_str(count):
@@ -220,10 +220,7 @@ def regenerated_pyconfig_h_in(file_paths):
     else:
         return "not needed"
 
-def travis(pull_request):
-    if pull_request == 'false':
-        print('Not a pull request; skipping')
-        return
+def main_pr():
     base_branch = get_base_branch()
     file_paths = changed_files(base_branch)
     python_files = [fn for fn in file_paths if fn.endswith('.py')]
@@ -276,10 +273,13 @@ def main():
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--travis',
+    parser.add_argument('--is-pr', '--travis',
+                        metavar='true/false',
                         help='Perform pass/fail checks')
     args = parser.parse_args()
-    if args.travis:
-        travis(args.travis)
-    else:
+    if not args.is_pr:
         main()
+    elif args.is_pr == 'false':
+        print('Not a pull request; skipping')
+    else:
+        main_pr()
