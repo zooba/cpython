@@ -110,7 +110,9 @@
     <None Include="..\PC\pyconw.ico" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="..\PC\pythonw_exe.rc" />
+    <ResourceCompile Include="..\PC\pythonw_exe.rc">
+      <PreprocessorDefinitions>NO_MANIFEST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\PC\python_uwp.cpp" />

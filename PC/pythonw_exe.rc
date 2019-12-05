@@ -5,7 +5,9 @@
 // Include the manifest file that indicates we support all
 // current versions of Windows.
 #include <winuser.h>
+#ifndef NO_MANIFEST
 1 RT_MANIFEST "python.manifest"
+#endif
 
 1 ICON DISCARDABLE "icons\pythonw.ico" 
 

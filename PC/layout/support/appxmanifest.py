@@ -17,7 +17,7 @@ from xml.etree import ElementTree as ET
 
 from .constants import *
 
-__all__ = ["get_appx_layout"]
+__all__ = ["get_appx_layout", "get_exe_manifest"]
 
 
 APPX_DATA = dict(
@@ -151,6 +151,14 @@ RESOURCES_XML_TEMPLATE = r"""<?xml version="1.0" encoding="UTF-8" standalone="ye
     </index>
 </resources>"""
 
+
+EXE_MANIFEST_FILENAME = "PC/python_uwp.manifest.in"
+
+EXE_MANIFEST_NAMESPACE = {
+    "": "urn:schemas-microsoft-com:asm.v1",
+    "asm1": "urn:schemas-microsoft-com:asm.v1",
+    "msix": "urn:schemas-microsoft-com:msix.v1",
+}
 
 SCCD_FILENAME = "PC/classicAppCompat.sccd"
 
@@ -504,3 +512,16 @@ def get_appx_layout(ns):
         # This should only be set for side-loading purposes.
         sccd = _fixup_sccd(ns, sccd, os.getenv("APPX_DATA_SHA256"))
         yield sccd.name, sccd
+
+
+def get_exe_manifest(ns, exe, appid):
+    with open(ns.source / EXE_MANIFEST_FILENAME, "r", encoding="utf-8") as f:
+        xml = ET.parse(f)
+    e = xml.find("msix:msix", EXE_MANIFEST_NAMESPACE)
+    e.set("publisher", APPX_DATA["Publisher"])
+    e.set("packageName", APPX_DATA["Name"])
+    e.set("applicationId", appid)
+
+    buffer = io.BytesIO()
+    xml.write(buffer, encoding="utf-8", xml_declaration=True)
+    yield exe + ".manifest", (exe + ".manifest", buffer.getvalue())

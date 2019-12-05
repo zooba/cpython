@@ -158,6 +158,11 @@ def get_layout(ns):
         # For backwards compatibility, but we don't reference these ourselves.
         yield from in_build("python_uwp.exe", new_name="python")
         yield from in_build("pythonw_uwp.exe", new_name="pythonw")
+        # Manifests are no longer embedded so we can generate them now
+        yield from get_exe_manifest(ns, "python{}.exe".format(VER_DOT), "Python")
+        yield from get_exe_manifest(ns, "pythonw{}.exe".format(VER_DOT), "PythonW")
+        yield from get_exe_manifest(ns, "python.exe", "Python")
+        yield from get_exe_manifest(ns, "pythonw.exe", "PythonW")
     else:
         yield from in_build("python.exe", new_name="python")
         yield from in_build("pythonw.exe", new_name="pythonw")
@@ -167,8 +172,10 @@ def get_layout(ns):
     if ns.include_launchers and ns.include_appxmanifest:
         if ns.include_pip:
             yield from in_build("python_uwp.exe", new_name="pip{}".format(VER_DOT))
+            yield from get_exe_manifest(ns, "pip{}.exe".format(VER_DOT), "Pip")
         if ns.include_idle:
             yield from in_build("pythonw_uwp.exe", new_name="idle{}".format(VER_DOT))
+            yield from get_exe_manifest(ns, "idle{}.exe".format(VER_DOT), "Idle")
 
     if ns.include_stable:
         yield from in_build(PYTHON_STABLE_DLL_NAME)
@@ -624,7 +631,9 @@ Catalog: {ns.catalog}""",
     if ns.arch in ("arm32", "arm64"):
         for n in ("include_idle", "include_tcltk"):
             if getattr(ns, n):
-                log_warning(f"Disabling --{n.replace('_', '-')} on unsupported platform")
+                log_warning(
+                    f"Disabling --{n.replace('_', '-')} on unsupported platform"
+                )
                 setattr(ns, n, False)
 
     if ns.include_idle and not ns.include_tcltk:
