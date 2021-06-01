@@ -426,6 +426,16 @@ class TestSysConfig(unittest.TestCase):
         suffix = sysconfig.get_config_var('EXT_SUFFIX')
         self.assertTrue(suffix.endswith('-darwin.so'), suffix)
 
+    @unittest.skipUnless(sys.platform == 'win32', 'Windows-specific test')
+    def test_win_libpl(self):
+        lib = get_config_var('LDLIBRARY')
+        self.assertTrue(lib)
+        libpl = get_config_var('LIBPL')
+        self.assertTrue(libpl)
+        abs_lib = os.path.join(libpl, lib)
+        self.assertTrue(os.path.isfile(abs_lib), abs_lib)
+
+
 class MakefileTests(unittest.TestCase):
 
     @unittest.skipIf(sys.platform.startswith('win'),

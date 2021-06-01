@@ -490,6 +490,18 @@ def _init_non_posix(vars):
     vars['VERSION'] = _PY_VERSION_SHORT_NO_DOT
     vars['BINDIR'] = os.path.dirname(_safe_realpath(sys.executable))
     vars['TZPATH'] = ''
+    if _PYTHON_BUILD:
+        vars['LIBPL'] = vars['BINDIR']
+    else:
+        vars['LIBPL'] = os.path.join(_BASE_PREFIX, "libs")
+    try:
+        from _winapi import GetModuleFileName
+        sys.dllhandle
+    except (AttributeError, ImportError):
+        pass
+    else:
+        vars['LDLIBRARY'] = n = os.path.basename(GetModuleFileName(sys.dllhandle))
+        vars['LIBRARY'] = os.path.splitext(n)[0]
 
 #
 # public APIs
