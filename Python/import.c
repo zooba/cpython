@@ -2454,6 +2454,227 @@ _imp_source_hash_impl(PyObject *module, long key, Py_buffer *source)
 }
 
 
+#ifdef MS_WINDOWS
+
+static DWORD WINAPI
+_preopen_files_worker(LPVOID lpParameter)
+{
+    HANDLE hHeap = GetProcessHeap();
+    const int share = FILE_SHARE_READ | FILE_SHARE_WRITE;// | FILE_SHARE_DELETE;
+
+    // Our buffer contains the directory name then all the file names, separated
+    // by nulls. We own it, so can modify the buffer to copy the name we're about
+    // to open to the end of the directory. Because all the strings are coming
+    // from within the buffer, we can't overrun.
+    wchar_t *buffer = (wchar_t*)lpParameter;
+    wchar_t *nameLocation = buffer + wcslen(buffer);
+    *nameLocation++ = L'\\';
+    const wchar_t *name = nameLocation;
+
+    while (*name) {
+        // read length first in case of overlapping wcscpy
+        size_t nameLen = wcslen(name);
+        if (name != nameLocation) {
+            wcscpy(nameLocation, name);
+        }
+        HANDLE hFile = CreateFileW(buffer, GENERIC_READ, share, NULL, OPEN_EXISTING, 0, NULL);
+        if (hFile != INVALID_HANDLE_VALUE) {
+            CloseHandle(hFile);
+        }
+        name += nameLen + 1;
+    }
+
+    HeapFree(hHeap, 0, lpParameter);
+    return 0;
+}
+
+/* Starts a new thread to process the names in wNames.
+
+Ensures wNames is properly terminated, assuming wNamesNext is at the end of the buffer.
+Returns the Windows error code, if any. After calling this function, wNames should not
+be used again.
+*/
+static int
+_preopen_files(HANDLE hHeap, wchar_t *wNames, wchar_t *wNamesNext)
+{
+    *wNamesNext = L'\0';
+    HANDLE hThread = CreateThread(NULL, 0, _preopen_files_worker, (LPVOID)wNames, 0, NULL);
+    if (!hThread) {
+        int err = GetLastError();
+        HeapFree(hHeap, 0, wNames);
+        return err;
+    }
+    CloseHandle(hThread);
+    return 0;
+}
+
+#endif
+
+/*[clinic input]
+_imp._cache_path_names
+
+    path: unicode
+    preload: int
+[clinic start generated code]*/
+
+static PyObject *
+_imp__cache_path_names_impl(PyObject *module, PyObject *path, int preload)
+/*[clinic end generated code: output=60d73d1bf9625df1 input=8b65582b89bf0fed]*/
+{
+    PyObject *result = PyList_New(0);
+    if (!result) {
+        goto abort;
+    }
+
+#ifdef MS_WINDOWS
+    wchar_t wPath[32768];
+    Py_ssize_t wPathLen = PyUnicode_AsWideChar(path, wPath, 32764);
+    if (wPathLen < 0) {
+        goto abort;
+    }
+    wPath[wPathLen++] = L'\\';
+    wPath[wPathLen++] = L'*';
+    wPath[wPathLen++] = L'\0';
+
+    int lastError = 0;
+    HANDLE hHeap = NULL;
+    // We assume below this can fit at least MAX_PATH plus two null terminators
+    const SIZE_T initialNamesLen = 4192; //32768;
+    assert(initialNamesLen > MAX_PATH + 2);
+    SIZE_T namesLen = 0;
+    wchar_t *wNames = NULL;
+    wchar_t *wNamesNext = NULL;
+
+    WIN32_FIND_DATAW findData;
+    HANDLE findHandle = INVALID_HANDLE_VALUE;
+
+    Py_BEGIN_ALLOW_THREADS;
+
+    hHeap = GetProcessHeap();
+    if (!hHeap) {
+        lastError = GetLastError();
+        goto finish_win;
+    }
+    findHandle = FindFirstFileW(wPath, &findData);
+    if (findHandle == INVALID_HANDLE_VALUE) {
+        lastError = GetLastError();
+        if (lastError == ERROR_PATH_NOT_FOUND || lastError == ERROR_FILE_NOT_FOUND) {
+            lastError = 0;
+        }
+        goto finish_win;
+    }
+    do {
+        SIZE_T nameLen = (SIZE_T)wcsnlen_s(findData.cFileName, MAX_PATH);
+
+        if (nameLen == 1 && findData.cFileName[0] == L'.') {
+            continue;
+        }
+        if (nameLen == 2 && findData.cFileName[0] == L'.' && findData.cFileName[1] == L'.') {
+            continue;
+        }
+
+        // Check if name is a file that we will want to preload
+        if (!(findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+            // No space in current buffer, so spin up a thread to process it
+            if (wNames && nameLen > namesLen + 2) {
+                lastError = _preopen_files(hHeap, wNames, wNamesNext);
+                if (lastError) {
+                    goto finish_win;
+                }
+                // The thread will deallocate the buffer, so we just clear our
+                // variable and create a new buffer below
+                wNames = NULL;
+            }
+
+            if (preload && !wNames) {
+                namesLen = initialNamesLen;
+                wNames = (wchar_t*)HeapAlloc(hHeap, 0, (namesLen + wPathLen) * sizeof(wchar_t));
+                if (!wNames) {
+                    lastError = GetLastError();
+                    goto finish_win;
+                }
+                // First entry is always the directory root
+                wcsncpy_s(wNames, namesLen, wPath, wPathLen - 3);
+                wNamesNext = wNames + (wPathLen - 3);
+                *wNamesNext++ = L'\0';
+            }
+
+            // We always lowercase the extension
+            wchar_t *suffix = wcschr(findData.cFileName, L'.');
+            if (suffix) {
+                for (wchar_t *s = suffix; *s; ++s) {
+                    *s = (wchar_t)tolower(*s);
+                }
+            }
+
+            // Suffix is already lowercase. We want to preload anything ".py*"
+            // Earlier suffix looked for the first dot, but this time we want the last
+            if (suffix) {
+                suffix = wcsrchr(suffix, L'.');
+            }
+            if (wNames && suffix && 0 == wcsncmp(suffix, L".py", 3)) {
+                if (wcsncpy_s(wNamesNext, namesLen, findData.cFileName, nameLen) != 0) {
+                    lastError = ERROR_NOT_ENOUGH_MEMORY;
+                    goto finish_win;
+                }
+                wNamesNext += nameLen;
+                *wNamesNext++ = L'\0';
+                namesLen -= nameLen + 1;
+            }
+        }
+        
+        // Add the name to our cache
+        Py_BLOCK_THREADS;
+        PyObject *name = PyUnicode_FromWideChar(findData.cFileName, nameLen);
+        if (!name) {
+            lastError = -1;
+        } else {
+            if (PyList_Append(result, name) < 0) {
+                lastError = -1;
+            }
+            Py_DECREF(name);
+        }
+        Py_UNBLOCK_THREADS;
+        if (lastError) {
+            goto finish_win;
+        }
+    } while (FindNextFileW(findHandle, &findData));
+
+    lastError = GetLastError();
+    if (lastError == 0 || lastError == ERROR_NO_MORE_FILES) {
+        lastError = 0;
+
+        // We may have names remaining, so spin them out to be preloaded
+        if (wNames && wNamesNext) {
+            lastError = _preopen_files(hHeap, wNames, wNamesNext);
+        }
+    } else if (wNames) {
+        HeapFree(hHeap, 0, wNames);
+    }
+
+finish_win:
+    Py_END_ALLOW_THREADS;
+    if (lastError == -1) {
+        goto abort;
+    } else if (lastError) {
+        PyErr_SetFromWindowsErr(lastError);
+        goto abort;
+    }
+
+#else
+
+    PyErr_SetString(PyExc_NotImplementedError, "not supported on POSIX yet");
+    goto abort;
+
+#endif
+    Py_SETREF(result, PyFrozenSet_New(result));
+    return result;
+abort:
+    Py_XDECREF(result);
+    return NULL;
+}
+
+
 PyDoc_STRVAR(doc_imp,
 "(Extremely) low-level import machinery bits as used by importlib and imp.");
 
@@ -2476,6 +2697,7 @@ static PyMethodDef imp_methods[] = {
     _IMP_EXEC_BUILTIN_METHODDEF
     _IMP__FIX_CO_FILENAME_METHODDEF
     _IMP_SOURCE_HASH_METHODDEF
+    _IMP__CACHE_PATH_NAMES_METHODDEF
     {NULL, NULL}  /* sentinel */
 };
 

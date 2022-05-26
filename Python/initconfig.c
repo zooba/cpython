@@ -2040,6 +2040,7 @@ const wchar_t* known_xoptions[] = {
     L"warn_default_encoding",
     L"no_debug_ranges",
     L"frozen_modules",
+    L"preload",
     NULL,
 };
 

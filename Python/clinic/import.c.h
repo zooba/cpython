@@ -558,6 +558,49 @@ exit:
     return return_value;
 }
 
+PyDoc_STRVAR(_imp__cache_path_names__doc__,
+"_cache_path_names($module, /, path, preload)\n"
+"--\n"
+"\n");
+
+#define _IMP__CACHE_PATH_NAMES_METHODDEF    \
+    {"_cache_path_names", _PyCFunction_CAST(_imp__cache_path_names), METH_FASTCALL|METH_KEYWORDS, _imp__cache_path_names__doc__},
+
+static PyObject *
+_imp__cache_path_names_impl(PyObject *module, PyObject *path, int preload);
+
+static PyObject *
+_imp__cache_path_names(PyObject *module, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)
+{
+    PyObject *return_value = NULL;
+    static const char * const _keywords[] = {"path", "preload", NULL};
+    static _PyArg_Parser _parser = {NULL, _keywords, "_cache_path_names", 0};
+    PyObject *argsbuf[2];
+    PyObject *path;
+    int preload;
+
+    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames, &_parser, 2, 2, 0, argsbuf);
+    if (!args) {
+        goto exit;
+    }
+    if (!PyUnicode_Check(args[0])) {
+        _PyArg_BadArgument("_cache_path_names", "argument 'path'", "str", args[0]);
+        goto exit;
+    }
+    if (PyUnicode_READY(args[0]) == -1) {
+        goto exit;
+    }
+    path = args[0];
+    preload = _PyLong_AsInt(args[1]);
+    if (preload == -1 && PyErr_Occurred()) {
+        goto exit;
+    }
+    return_value = _imp__cache_path_names_impl(module, path, preload);
+
+exit:
+    return return_value;
+}
+
 #ifndef _IMP_CREATE_DYNAMIC_METHODDEF
     #define _IMP_CREATE_DYNAMIC_METHODDEF
 #endif /* !defined(_IMP_CREATE_DYNAMIC_METHODDEF) */
@@ -565,4 +608,4 @@ exit:
 #ifndef _IMP_EXEC_DYNAMIC_METHODDEF
     #define _IMP_EXEC_DYNAMIC_METHODDEF
 #endif /* !defined(_IMP_EXEC_DYNAMIC_METHODDEF) */
-/*[clinic end generated code: output=8d0f4305b1d0714b input=a9049054013a1b77]*/
+/*[clinic end generated code: output=ee9d0671a3562517 input=a9049054013a1b77]*/
