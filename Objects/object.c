@@ -2182,9 +2182,9 @@ PyObject_Dir(PyObject *obj)
 
 
 static int
-_PyInterface_GetAttrWChar_Release(PyInterface_GetAttrWChar *intf)
+_PyInterface_GetAttrWChar_Release(PyInterface_Base *intf)
 {
-    Py_XDECREF(intf->_obj);
+    Py_XDECREF(((PyInterface_GetAttrWChar*)intf)->_obj);
     return 0;
 }
 
@@ -2218,15 +2218,16 @@ _PyInterface_GetAttrWChar_HasAttr(PyInterface_GetAttrWChar *intf, const wchar_t 
 
 
 static int
-PyObject_GenericGetInterface(PyObject *obj, const char *intf_name, void *intf)
+PyObject_GenericGetInterface(PyObject *obj, PyInterface_Base *intf)
 {
-    if (0 == strcmp(intf_name, PyInterface_GetAttrWChar_Name)) {
-        PyInterface_GetAttrWChar *gawc = (PyInterface_GetAttrWChar *)intf;
-        if (gawc->base.size != sizeof(PyInterface_GetAttrWChar)) {
+    switch (intf->name) {
+    case PyInterface_GetAttrWChar_Name:
+        if (intf->size != sizeof(PyInterface_GetAttrWChar)) {
             PyErr_SetString(PyExc_SystemError, "Invalid size struct passed to PyObject_GetInterface");
             return -1;
         }
-        gawc->base.release = _PyInterface_GetAttrWChar_Release;
+        intf->release = _PyInterface_GetAttrWChar_Release;
+        PyInterface_GetAttrWChar *gawc = (PyInterface_GetAttrWChar *)intf;
         gawc->getattr = _PyInterface_GetAttrWChar_GetAttr;
         gawc->hasattr = _PyInterface_GetAttrWChar_HasAttr;
         gawc->_obj = Py_NewRef(obj);
@@ -2241,17 +2242,34 @@ PyObject_GenericGetInterface(PyObject *obj, const char *intf_name, void *intf)
    or uses PyObject_GenericGetInterface if not set.
 */
 int
-PyObject_GetInterface(PyObject *obj, const char *intf_name, void *intf)
+PyObject_GetInterface(PyObject *obj, void *intf)
 {
-    if (!obj || !intf_name || !intf) {
+    if (!obj || !intf) {
         PyErr_SetString(PyExc_SystemError, "NULL argument passed to PyObject_GetInterface");
         return -1;
     }
-    getinterfacefunc fn = Py_TYPE(obj)->tp_getinterface;
-    if (fn) {
-        return fn(obj, intf_name, intf);
+
+    Py_getinterfacefunc fn = NULL;
+    if (PyType_Check(obj)) {
+        fn = ((PyTypeObject *)obj)->tp_getinterface;
+    } else {
+        fn = Py_TYPE(obj)->tp_getinterface;
     }
-    return PyObject_GenericGetInterface(obj, intf_name, intf);
+    if (fn) {
+        return fn(obj, (PyInterface_Base *)intf);
+    }
+    return PyObject_GenericGetInterface(obj, (PyInterface_Base *)intf);
+}
+
+
+int
+PyInterface_Release(void *intf)
+{
+    PyInterface_Base *intf_base = (PyInterface_Base *)intf;
+    if (intf_base && intf_base->release) {
+        return (*intf_base->release)(intf_base);
+    }
+    return 0;
 }
 
 

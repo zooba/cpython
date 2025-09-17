@@ -492,7 +492,7 @@ PyAPI_FUNC(void) PyObject_ClearWeakRefs(PyObject *);
 PyAPI_FUNC(PyObject *) PyObject_Dir(PyObject *);
 
 #if !defined(Py_LIMITED_API) || Py_LIMITED_API+0 >= 0x030F0000
-PyAPI_FUNC(int) PyObject_GetInterface(PyObject *obj, const char *intf_name, void *intf);
+PyAPI_FUNC(int) PyObject_GetInterface(PyObject *obj, void *intf);
 #endif
 
 
