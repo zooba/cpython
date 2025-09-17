@@ -4,7 +4,7 @@
 extern "C" {
 #endif
 
-/* 
+/*
 The PyInterface_Base struct is the generic type for actual interface data
 implementations. The intent is for callers to preallocate the specific struct
 and have the PyObject_GetInterface() function fill it in.
